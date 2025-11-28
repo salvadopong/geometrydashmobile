@@ -1,140 +1,881 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Geometry Dash Clone – Ultra Enhanced</title>
-<style>
-/* GLOBAL */
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#000;font-family:Arial, sans-serif;overflow:hidden;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Dash: Ultimate & Editor</title>
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --secondary: #ff0055;
+            --bg: #111;
+            --panel: rgba(0, 0, 0, 0.85);
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
-/* MENU */
-#menuScreen{
- position:absolute;top:0;left:0;width:100vw;height:100vh;
- display:flex;flex-direction:column;justify-content:center;align-items:center;
- background:linear-gradient(135deg,#12003a,#28006d,#7500c9,#28006d,#12003a);
- background-size:600% 600%;animation:menuglow 12s infinite;
- z-index:10;
-}
-@keyframes menuglow{0%{background-position:0 50%;}50%{background-position:100% 50%;}100%{background-position:0 50%;}}
-.menu-title{font-size:80px;color:#fff;text-shadow:0 0 30px #8f00ff,0 0 60px #ff00ff;margin-bottom:40px;font-weight:900;}
-.menu-btn{background:#ff00d4;color:#fff;padding:20px 60px;margin:10px;border-radius:20px;font-size:32px;cursor:pointer;transition:0.2s;box-shadow:0 0 25px #ff00ff;}
-.menu-btn:hover{transform:scale(1.12);box-shadow:0 0 40px #ff66ff;}
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Orbitron', sans-serif;
+            color: white;
+            user-select: none;
+        }
 
-/* GAME */
-#gameContainer{width:100vw;height:100vh;display:none;}
-#gameCanvas{width:100%;height:100%;background:#0a0020;}
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(45deg, #050510, #1a0b1a);
+        }
 
-</style>
+        canvas {
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.2);
+            border: 2px solid #333;
+            background: #000;
+        }
+
+        /* UI Overlay System */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s;
+        }
+
+        .hidden { opacity: 0; pointer-events: none !important; }
+        .visible { opacity: 1; pointer-events: all; }
+
+        /* Menus */
+        .menu-box {
+            background: var(--panel);
+            padding: 40px;
+            border-radius: 15px;
+            border: 2px solid var(--primary);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 { font-size: 3rem; margin: 0 0 20px 0; text-transform: uppercase; text-shadow: 0 0 10px var(--primary); background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { margin-bottom: 20px; color: #ddd; }
+
+        button {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 15px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            margin: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover { background: var(--primary); color: #000; box-shadow: 0 0 20px var(--primary); transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+        
+        button.secondary { border-color: var(--secondary); color: var(--secondary); }
+        button.secondary:hover { background: var(--secondary); color: white; box-shadow: 0 0 20px var(--secondary); }
+
+        /* Level Selector */
+        .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .level-btn { padding: 20px; font-size: 1.5rem; border: 1px solid #555; background: rgba(255,255,255,0.05); }
+        .level-btn:hover { border-color: var(--primary); background: rgba(0, 240, 255, 0.1); }
+
+        /* Customizer */
+        .color-picker { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .swatch { width: 40px; height: 40px; border: 2px solid #fff; cursor: pointer; transition: transform 0.2s; }
+        .swatch:hover { transform: scale(1.2); }
+        .swatch.selected { border-color: var(--primary); box-shadow: 0 0 15px var(--primary); }
+
+        /* Editor UI */
+        #editor-ui {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #555;
+            display: flex;
+            gap: 10px;
+            pointer-events: all;
+        }
+        
+        .editor-tool {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.5);
+        }
+        .editor-tool.active { border-color: var(--primary); background: rgba(0, 240, 255, 0.2); }
+        
+        /* HUD */
+        #hud { position: absolute; top: 20px; left: 20px; font-size: 1.5rem; pointer-events: none; display: none; width: 95%; justify-content: space-between; }
+        .progress-bar { width: 300px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; border: 1px solid #555; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s; }
+
+        #msg-toast {
+            position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 10px 20px; border: 1px solid white;
+            opacity: 0; transition: opacity 0.5s; pointer-events: none;
+        }
+    </style>
 </head>
 <body>
 
-<div id="menuScreen">
- <div class="menu-title">GEOMETRY DASH</div>
- <button class="menu-btn" onclick="startLevelSelect()">PLAY</button>
- <button class="menu-btn" onclick="showCredits()">CREDITS</button>
-</div>
-<div id="gameContainer"><canvas id="gameCanvas"></canvas></div>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="menu-main" class="ui-layer visible">
+            <div class="menu-box">
+                <h1>Neon Dash</h1>
+                <p>ULTIMATE EDITION</p>
+                <button onclick="Game.ui.showLevelSelect()">Play Levels</button>
+                <button class="secondary" onclick="Game.ui.showEditor()">Course Maker</button>
+                <br>
+                <button onclick="Game.ui.showCustomize()">Customize</button>
+            </div>
+        </div>
+
+        <div id="menu-levels" class="ui-layer hidden">
+            <div class="menu-box">
+                <h2>Select Sector</h2>
+                <div class="level-grid">
+                    <button class="level-btn" onclick="Game.startLevel(0)">1</button>
+                    <button class="level-btn" onclick="Game.startLevel(1)">2</button>
+                    <button class="level-btn" onclick="Game.startLevel(2)">3</button>
+                    <button class="level-btn" onclick="Game.startLevel(3)">4</button>
+                    <button class="level-btn" onclick="Game.startLevel(4)">5</button>
+                    <button class="level-btn secondary" onclick="Game.startCustomLevel()">USER</button>
+                </div>
+                <button onclick="Game.ui.goHome()">Back</button>
+            </div>
+        </div>
+
+        <div id="menu-custom" class="ui-layer hidden">
+            <div class="menu-box">
+                <h2>Customize Core</h2>
+                <div id="skin-preview" style="width:50px; height:50px; background:yellow; margin:0 auto 20px auto; border: 2px solid white;"></div>
+                <div class="color-picker" id="color-picker">
+                    </div>
+                <button onclick="Game.ui.goHome()">Save & Back</button>
+            </div>
+        </div>
+
+        <div id="menu-pause" class="ui-layer hidden">
+            <div class="menu-box">
+                <h2 id="pause-title">Paused</h2>
+                <p id="pause-stats">Attempt 1</p>
+                <button onclick="Game.restartLevel()">Retry</button>
+                <button class="secondary" onclick="Game.ui.goHome()">Menu</button>
+            </div>
+        </div>
+
+        <div id="editor-overlay" class="ui-layer hidden" style="justify-content: flex-end; pointer-events: none;">
+            <div id="editor-ui">
+                <div class="editor-tool active" onclick="Editor.setTool(1)">BLOCK</div>
+                <div class="editor-tool" onclick="Editor.setTool(2)">SPIKE</div>
+                <div class="editor-tool" onclick="Editor.setTool(3)">ORB</div>
+                <div class="editor-tool" onclick="Editor.setTool(99)">GOAL</div>
+                <div class="editor-tool" style="border-color: #f55" onclick="Editor.setTool(0)">ERASE</div>
+                <div style="width: 20px;"></div>
+                <div class="editor-tool secondary" onclick="Editor.testLevel()">TEST</div>
+                <div class="editor-tool secondary" onclick="Editor.saveLevel()">SAVE</div>
+                <div class="editor-tool secondary" onclick="Game.ui.goHome()">EXIT</div>
+            </div>
+            <div style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 10px; pointer-events: all;">
+                <p>Arrow Keys: Move Camera</p>
+                <p>Click: Place/Remove</p>
+            </div>
+        </div>
+
+        <div id="hud">
+            <div style="color:white; font-weight:bold;">Attempt <span id="hud-attempt">1</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="hud-progress"></div></div>
+        </div>
+        
+        <div id="msg-toast">Level Saved!</div>
+    </div>
 
 <script>
-/* CANVAS */
-const canvas=document.getElementById("gameCanvas");
-const ctx=canvas.getContext("2d");
-canvas.width=innerWidth;canvas.height=innerHeight;
-window.onresize=()=>{canvas.width=innerWidth;canvas.height=innerHeight;};
+/**
+ * GEOMETRY DASH ENGINE - SINGLE FILE
+ * Contains: Physics, Renderer, Audio, Editor, Level Data
+ */
 
-/* PLAYER */
-let player={x:200,y:500,size:50,yv:0,gravity:0.9,jumpForce:-18,mode:"cube",onGround:false,rot:0};
+// --- Audio System (Synthesizer to avoid external assets) ---
+const AudioSys = {
+    ctx: null,
+    init: function() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    },
+    playTone: function(freq, type, duration, vol = 0.1) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+    jump: function() { this.playTone(150, 'square', 0.1, 0.1); },
+    death: function() { this.playTone(50, 'sawtooth', 0.5, 0.2); },
+    win: function() { 
+        this.playTone(400, 'sine', 0.1, 0.1); 
+        setTimeout(()=>this.playTone(600, 'sine', 0.2, 0.1), 100);
+        setTimeout(()=>this.playTone(800, 'sine', 0.4, 0.1), 200);
+    },
+    click: function() { this.playTone(800, 'sine', 0.05, 0.05); }
+};
 
-/* GAME STATE */
-let currentLevel=0,scrollX=0,gameRunning=false;
-let particles=[];
+// --- Constants & Config ---
+const CONFIG = {
+    gravity: 0.6, // Heavy gravity for snappy feel
+    jumpForce: 10.5,
+    speed: 6.5,
+    tileSize: 50,
+    colors: ['#ffff00', '#00ff00', '#00f0ff', '#ff0055', '#aa00ff', '#ffffff']
+};
 
-/* LEVELS */
-const levels=[];
+// --- Level Data (Grid Based: 1=Block, 2=Spike, 3=Orb, 99=Goal) ---
+// Y coordinates are from bottom up (0 is floor)
+const LEVELS = [
+    // Level 1: The Beginning
+    [
+        {t:1, x:10, y:0}, {t:1, x:11, y:0}, {t:2, x:14, y:0}, {t:1, x:18, y:0}, {t:1, x:19, y:1},
+        {t:2, x:22, y:0}, {t:1, x:25, y:0}, {t:1, x:26, y:0}, {t:1, x:27, y:0}, {t:2, x:30, y:0},
+        {t:2, x:31, y:0}, {t:1, x:35, y:1}, {t:1, x:36, y:2}, {t:2, x:40, y:0}, {t:99, x:50, y:0}
+    ],
+    // Level 2: Steps
+    [
+        {t:1, x:5, y:0}, {t:2, x:8, y:0}, {t:1, x:12, y:1}, {t:1, x:13, y:1}, {t:2, x:16, y:0},
+        {t:1, x:20, y:2}, {t:1, x:21, y:2}, {t:2, x:25, y:0}, {t:2, x:26, y:0}, {t:1, x:30, y:1},
+        {t:3, x:35, y:3}, {t:1, x:40, y:3}, {t:2, x:43, y:3}, {t:99, x:55, y:0}
+    ],
+    // Level 3: Drop
+    [
+        {t:1, x:5, y:0}, {t:1, x:6, y:1}, {t:1, x:7, y:2}, {t:2, x:12, y:0}, {t:3, x:15, y:3},
+        {t:1, x:19, y:3}, {t:2, x:23, y:3}, {t:1, x:28, y:1}, {t:2, x:32, y:0}, {t:1, x:36, y:2},
+        {t:2, x:40, y:2}, {t:3, x:42, y:4}, {t:99, x:50, y:0}
+    ],
+    // Level 4: Speed
+    [
+        {t:2, x:10, y:0}, {t:2, x:13, y:0}, {t:1, x:16, y:1}, {t:2, x:20, y:0}, {t:3, x:22, y:3},
+        {t:1, x:26, y:3}, {t:2, x:29, y:3}, {t:3, x:32, y:3}, {t:1, x:36, y:2}, {t:2, x:40, y:0},
+        {t:2, x:45, y:0}, {t:2, x:46, y:0}, {t:99, x:60, y:0}
+    ],
+    // Level 5: Memory
+    [
+        {t:1, x:10, y:2}, {t:1, x:11, y:2}, {t:2, x:15, y:0}, {t:3, x:18, y:3}, {t:2, x:22, y:0},
+        {t:1, x:25, y:1}, {t:2, x:29, y:0}, {t:1, x:32, y:2}, {t:2, x:35, y:2}, {t:3, x:38, y:4},
+        {t:1, x:42, y:3}, {t:2, x:45, y:0}, {t:99, x:55, y:0}
+    ]
+];
 
-function fancyLevel(seed){let arr=[];for(let i=0;i<35;i++){let x=500+i*300;if(i%7===0)arr.push({type:"portal",x,y:600,mode:"wave"});else if(i%5===0)arr.push({type:"portal",x,y:600,mode:"ship"});else if(i%3===0)arr.push({type:"spike",x,y:600});else arr.push({type:"block",x,y:600,w:250,h:50});}return arr;}
+// --- Engine Classes ---
 
-levels.push(
- /* Manual Level 1 */ [
-  {type:"block",x:600,y:600,w:300,h:50},
-  {type:"spike",x:950,y:600},
-  {type:"block",x:1250,y:600,w:350,h:50},
-  {type:"portal",x:1700,y:600,mode:"ship"},
-  {type:"block",x:2000,y:500,w:300,h:50},
-  {type:"spike",x:2350,y:500}
- ],
- /* Manual Level 2 */ [
-  {type:"block",x:500,y:600,w:300,h:50},
-  {type:"spike",x:850,y:600},
-  {type:"portal",x:1200,y:600,mode:"wave"},
-  {type:"block",x:1500,y:550,w:350,h:50},
-  {type:"spike",x:1850,y:550}
- ]
-);
-for(let i=2;i<10;i++)levels.push(fancyLevel(i));
-
-/* MENU → LEVEL SELECT */
-function startLevelSelect(){let m=document.getElementById("menuScreen");m.innerHTML="";let t=document.createElement("div");t.className="menu-title";t.textContent="SELECT LEVEL";m.appendChild(t);for(let i=0;i<10;i++){let b=document.createElement("button");b.className="menu-btn";b.textContent="LEVEL "+(i+1);b.onclick=()=>loadLevel(i);m.appendChild(b);} }
-
-function loadLevel(n){currentLevel=n;scrollX=0;player.x=200;player.y=500;player.yv=0;player.mode="cube";document.getElementById("menuScreen").style.display="none";document.getElementById("gameContainer").style.display="block";if(!gameRunning){gameRunning=true;requestAnimationFrame(gameLoop);} }
-
-/* INPUT */
-let jumpHeld=false;
-window.onmousedown=()=>jumpHeld=true;
-window.onmouseup=()=>jumpHeld=false;
-window.onkeydown=e=>{if(e.code==="Space")jumpHeld=true;};
-window.onkeyup=e=>{if(e.code==="Space")jumpHeld=false;};
-
-/* PARTICLES */
-function addParticle(x,y,color){for(let i=0;i<6;i++){particles.push({x,y,dx:(Math.random()*6-3),dy:(Math.random()*6-3),life:20,color});}}
-
-/* GAME LOOP */
-function gameLoop(){ctx.clearRect(0,0,canvas.width,canvas.height);
- scrollX+=7;
- drawBackground();
- updatePlayer();
- drawObstacles();
- drawPlayer();
- updateParticles();
- requestAnimationFrame(gameLoop);
+class Particle {
+    constructor(x, y, color, type) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.size = Math.random() * 8 + 2;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.03 + 0.02;
+        this.type = type; // 0=explosion, 1=trail
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+        if(this.type === 1) this.size -= 0.5;
+    }
+    draw(ctx, camX) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - camX, this.y, this.size, this.size);
+        ctx.globalAlpha = 1;
+    }
 }
 
-/* BACKGROUND */
-function drawBackground(){let grd=ctx.createLinearGradient(0,0,0,canvas.height);grd.addColorStop(0,"#140040");grd.addColorStop(1,"#0a001a");ctx.fillStyle=grd;ctx.fillRect(0,0,canvas.width,canvas.height);} 
+class Player {
+    constructor() {
+        this.w = CONFIG.tileSize;
+        this.h = CONFIG.tileSize;
+        this.reset();
+        this.color = localStorage.getItem('playerColor') || CONFIG.colors[0];
+        this.angle = 0;
+    }
 
-/* PLAYER UPDATE */
-function updatePlayer(){if(player.mode==="cube"){player.yv+=player.gravity;if(jumpHeld&&player.onGround){player.yv=player.jumpForce;addParticle(player.x,player.y+player.size,"#00ffff");}}
- else if(player.mode==="ship"){if(jumpHeld)player.yv-=0.6;else player.yv+=0.6;}
- else if(player.mode==="ufo"){player.yv=jumpHeld?-12:12;}
- else if(player.mode==="wave"){player.y+=jumpHeld?-12:12;}
- player.y+=player.yv;
- player.rot+=0.15;
- player.onGround=false;
+    reset() {
+        this.x = 0;
+        this.y = 0; // Relative to floor
+        this.dy = 0;
+        this.onGround = true;
+        this.dead = false;
+        this.angle = 0;
+        this.trailTimer = 0;
+    }
+
+    update(levelObjects) {
+        if (this.dead) return;
+
+        // Apply Gravity
+        this.dy += CONFIG.gravity;
+        this.y += this.dy;
+
+        // Rotation logic
+        if (!this.onGround) {
+            this.angle += 0.15; // Rotate when jumping
+        } else {
+            // Snap to nearest 90
+            let r = Math.round(this.angle / (Math.PI/2)) * (Math.PI/2);
+            this.angle += (r - this.angle) * 0.2;
+        }
+
+        // Horizontal Movement (The world moves, but conceptually player is moving x)
+        this.x += CONFIG.speed;
+
+        this.onGround = false;
+
+        // Floor Collision
+        const floorY = Game.canvas.height - 100;
+        if (this.y + this.h >= floorY) {
+            this.y = floorY - this.h;
+            this.dy = 0;
+            this.onGround = true;
+        }
+
+        // Object Collision
+        const pRect = { l: this.x, r: this.x + this.w, t: this.y, b: this.y + this.h };
+        
+        for (let obj of levelObjects) {
+            // Convert grid to world coords
+            let ox = obj.x * CONFIG.tileSize;
+            let oy = floorY - (obj.y * CONFIG.tileSize) - CONFIG.tileSize;
+            let ow = CONFIG.tileSize;
+            let oh = CONFIG.tileSize;
+
+            // Simple AABB
+            if (pRect.r > ox + 5 && pRect.l < ox + ow - 5 && pRect.b > oy + 5 && pRect.t < oy + oh - 5) {
+                
+                if (obj.t === 99) { // Goal
+                    Game.winLevel();
+                    return;
+                }
+                else if (obj.t === 2) { // Spike
+                    this.die();
+                    return;
+                }
+                else if (obj.t === 3) { // Orb
+                    // Orb logic handled in input check usually, but for simplicity
+                    // we'll just register it as a jumpable zone in Game loop
+                }
+                else if (obj.t === 1) { // Block
+                    // Determine side of collision
+                    // Previous frame position would be better, but we use penetration depth
+                    
+                    // Bottom of player hit Top of block
+                    let penTop = Math.abs(pRect.b - oy);
+                    let penLeft = Math.abs(pRect.r - ox);
+                    
+                    if (penTop < 15 && this.dy > 0) {
+                        // Landed on top
+                        this.y = oy - this.h;
+                        this.dy = 0;
+                        this.onGround = true;
+                    } else {
+                        // Hit side or bottom -> Death
+                        this.die();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    jump(levelObjects) {
+        if (this.onGround) {
+            this.dy = -CONFIG.jumpForce;
+            this.onGround = false;
+            AudioSys.jump();
+            Game.spawnParticles(this.x + this.w/2, this.y + this.h, 5, '#fff', 1);
+        } else {
+            // Check for Orbs
+            const floorY = Game.canvas.height - 100;
+            const pRect = { l: this.x, r: this.x + this.w, t: this.y, b: this.y + this.h };
+            
+            for (let obj of levelObjects) {
+                if (obj.t === 3) {
+                    let ox = obj.x * CONFIG.tileSize;
+                    let oy = floorY - (obj.y * CONFIG.tileSize) - CONFIG.tileSize;
+                    // Slightly larger hit box for orbs
+                    if (pRect.r > ox - 10 && pRect.l < ox + CONFIG.tileSize + 10 && 
+                        pRect.b > oy - 10 && pRect.t < oy + CONFIG.tileSize + 10) {
+                        this.dy = -CONFIG.jumpForce * 1.2; // Double jump boost
+                        AudioSys.jump();
+                        Game.spawnParticles(ox + 25, oy + 25, 10, '#ffff00', 0);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    die() {
+        if (this.dead) return;
+        this.dead = true;
+        AudioSys.death();
+        Game.spawnParticles(this.x + this.w/2, this.y + this.h/2, 30, this.color, 0);
+        Game.shakeScreen();
+        setTimeout(() => Game.showPause(true), 600);
+    }
+
+    draw(ctx, camX) {
+        if (this.dead) return;
+        
+        ctx.save();
+        ctx.translate(this.x - camX + this.w/2, this.y + this.h/2);
+        ctx.rotate(this.angle);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+        
+        // Inner face
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-this.w/4, -this.h/4, this.w/2, this.h/2);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-this.w/8, -this.h/8, this.w/4, this.h/4);
+        
+        ctx.restore();
+    }
 }
 
-/* OBSTACLES */
-function drawObstacles(){for(let o of levels[currentLevel]){const ox=o.x-scrollX;
- if(o.type==="block"){ctx.fillStyle="#5500ff";ctx.fillRect(ox,o.y,o.w,o.h);
-  if(player.x<ox+o.w&&player.x+player.size>ox&&player.y+player.size>=o.y){player.y=o.y-player.size;player.yv=0;player.onGround=true;}}
- if(o.type==="spike"){ctx.fillStyle="#ff0066";ctx.beginPath();ctx.moveTo(ox,o.y);ctx.lineTo(ox+40,o.y);ctx.lineTo(ox+20,o.y-40);ctx.closePath();ctx.fill();
-  if(player.x<ox+40&&player.x+player.size>ox&&player.y+player.size>o.y-40){death();return;}}
- if(o.type==="portal"){ctx.fillStyle="#00ffee";ctx.fillRect(ox,o.y-60,40,60);
-  if(player.x+player.size>ox&&player.x<ox+40){player.mode=o.mode;addParticle(player.x,player.y,"#00ffff");}}
- }}
+// --- Editor System ---
+const Editor = {
+    active: false,
+    levelData: [],
+    camX: 0,
+    selectedTool: 1,
+    
+    init: function() {
+        this.levelData = [];
+    },
 
-/* DRAW PLAYER */
-function drawPlayer(){ctx.save();ctx.translate(player.x+player.size/2,player.y+player.size/2);ctx.rotate(player.rot);ctx.fillStyle="#00ffcc";ctx.fillRect(-player.size/2,-player.size/2,player.size,player.size);ctx.restore();}
+    setTool: function(id) {
+        this.selectedTool = id;
+        document.querySelectorAll('.editor-tool').forEach(el => el.classList.remove('active'));
+        // Find button based on onclick attribute text is hacky but efficient for single file
+        const tools = document.querySelectorAll('.editor-tool');
+        if(id===1) tools[0].classList.add('active');
+        if(id===2) tools[1].classList.add('active');
+        if(id===3) tools[2].classList.add('active');
+        if(id===99) tools[3].classList.add('active');
+        if(id===0) tools[4].classList.add('active');
+    },
 
-/* PARTICLE UPDATE */
-function updateParticles(){for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.x+=p.dx;p.y+=p.dy;p.life--;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,4,4);if(p.life<=0)particles.splice(i,1);} }
+    handleInput: function(e, type) {
+        if (!this.active) return;
+        
+        // Camera move
+        if (type === 'key') {
+            if (e.key === 'ArrowRight') this.camX += 50;
+            if (e.key === 'ArrowLeft') this.camX = Math.max(0, this.camX - 50);
+        }
+        
+        // Mouse placement
+        if (type === 'click') {
+            const rect = Game.canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left + this.camX;
+            const my = e.clientY - rect.top;
+            
+            const floorY = Game.canvas.height - 100;
+            
+            // Grid Coords
+            const gx = Math.floor(mx / CONFIG.tileSize);
+            const gy = Math.floor((floorY - my) / CONFIG.tileSize);
+            
+            if (gy < 0 || gy > 10) return; // Bounds
+            
+            // Remove existing at this spot
+            this.levelData = this.levelData.filter(o => !(o.x === gx && o.y === gy));
+            
+            if (this.selectedTool !== 0) {
+                this.levelData.push({t: this.selectedTool, x: gx, y: gy});
+                AudioSys.click();
+            }
+        }
+    },
 
-/* DEATH */
-function death(){addParticle(player.x,player.y,"#ff0000");loadLevel(currentLevel);} 
+    draw: function(ctx) {
+        const floorY = Game.canvas.height - 100;
+        
+        // Draw Grid
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=0; i<Game.canvas.width; i+=CONFIG.tileSize) {
+            ctx.moveTo(i, 0); ctx.lineTo(i, Game.canvas.height);
+        }
+        for(let i=0; i<Game.canvas.height; i+=CONFIG.tileSize) {
+            ctx.moveTo(0, i); ctx.lineTo(Game.canvas.width, i);
+        }
+        ctx.stroke();
 
-/* CREDITS */
-function showCredits(){let m=document.getElementById("menuScreen");m.innerHTML="<div class='menu-title'>CREDITS</div><div class='menu-btn' onclick='location.reload()'>BACK</div>";}
+        // Draw Floor Line
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, floorY);
+        ctx.lineTo(Game.canvas.width, floorY);
+        ctx.stroke();
+
+        // Draw Objects
+        this.levelData.forEach(obj => {
+            let dx = obj.x * CONFIG.tileSize - this.camX;
+            let dy = floorY - (obj.y * CONFIG.tileSize) - CONFIG.tileSize;
+            
+            if (dx > -50 && dx < Game.canvas.width) {
+                Game.drawLevelObject(ctx, obj, dx, dy);
+            }
+        });
+    },
+
+    saveLevel: function() {
+        localStorage.setItem('customLevel', JSON.stringify(this.levelData));
+        Game.showToast("Level Saved!");
+    },
+    
+    testLevel: function() {
+        this.saveLevel();
+        Game.startCustomLevel();
+    }
+};
+
+// --- Main Game System ---
+const Game = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.getElementById('gameCanvas').getContext('2d'),
+    
+    state: 'menu', // menu, game, editor
+    currentLevel: 0,
+    levelData: [],
+    particles: [],
+    cameraX: 0,
+    attempt: 1,
+    shake: 0,
+    
+    player: new Player(),
+    
+    ui: {
+        hideAll: () => document.querySelectorAll('.ui-layer').forEach(el => el.classList.remove('visible') || el.classList.add('hidden')),
+        show: (id) => {
+            Game.ui.hideAll();
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(id).classList.add('visible');
+        },
+        goHome: () => {
+            Game.state = 'menu';
+            Game.ui.show('menu-main');
+            document.getElementById('hud').style.display = 'none';
+        },
+        showLevelSelect: () => Game.ui.show('menu-levels'),
+        showEditor: () => {
+            Game.state = 'editor';
+            Editor.active = true;
+            Editor.init();
+            // Load existing custom level if exists
+            const saved = localStorage.getItem('customLevel');
+            if(saved) Editor.levelData = JSON.parse(saved);
+            
+            Game.ui.show('editor-overlay');
+        },
+        showCustomize: () => {
+            Game.ui.show('menu-custom');
+            Game.renderColorPicker();
+        }
+    },
+
+    init: function() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        // Input Handling
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            AudioSys.init(); // Unlock audio context
+            if (this.state === 'game') {
+                if (e.code === 'Space' || e.code === 'ArrowUp') this.player.jump(this.levelData);
+                if (e.code === 'Escape') this.showPause(false);
+            } else if (this.state === 'editor') {
+                Editor.handleInput(e, 'key');
+            }
+        });
+        
+        window.addEventListener('mousedown', (e) => {
+            AudioSys.init();
+            if (this.state === 'game') this.player.jump(this.levelData);
+            if (this.state === 'editor') Editor.handleInput(e, 'click');
+        });
+
+        requestAnimationFrame(() => this.loop());
+    },
+
+    resize: function() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    },
+
+    startLevel: function(idx) {
+        this.currentLevel = idx;
+        this.levelData = JSON.parse(JSON.stringify(LEVELS[idx])); // Deep copy
+        this.resetGame();
+    },
+
+    startCustomLevel: function() {
+        const saved = localStorage.getItem('customLevel');
+        if (!saved) {
+            this.showToast("No Custom Level Found!");
+            return;
+        }
+        this.levelData = JSON.parse(saved);
+        this.currentLevel = -1; // Custom flag
+        this.resetGame();
+    },
+
+    resetGame: function() {
+        this.state = 'game';
+        this.player.reset();
+        this.cameraX = 0;
+        this.particles = [];
+        this.ui.hideAll();
+        document.getElementById('hud').style.display = 'flex';
+        document.getElementById('hud-attempt').innerText = this.attempt;
+        this.updateProgressBar();
+    },
+
+    showPause: function(isDeath) {
+        this.state = 'paused';
+        document.getElementById('pause-title').innerText = isDeath ? "CRASHED" : "PAUSED";
+        if (isDeath) this.attempt++;
+        this.ui.show('menu-pause');
+    },
+    
+    restartLevel: function() {
+        this.resetGame();
+    },
+
+    winLevel: function() {
+        this.state = 'paused';
+        AudioSys.win();
+        document.getElementById('pause-title').innerText = "LEVEL COMPLETE!";
+        this.ui.show('menu-pause');
+    },
+
+    spawnParticles: function(x, y, count, color, type) {
+        for(let i=0; i<count; i++) {
+            this.particles.push(new Particle(x, y, color, type));
+        }
+    },
+
+    shakeScreen: function() {
+        this.shake = 15;
+    },
+    
+    showToast: function(msg) {
+        const t = document.getElementById('msg-toast');
+        t.innerText = msg;
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 2000);
+    },
+
+    renderColorPicker: function() {
+        const container = document.getElementById('color-picker');
+        container.innerHTML = '';
+        const preview = document.getElementById('skin-preview');
+        preview.style.backgroundColor = this.player.color;
+        
+        CONFIG.colors.forEach(c => {
+            const d = document.createElement('div');
+            d.className = 'swatch' + (this.player.color === c ? ' selected' : '');
+            d.style.backgroundColor = c;
+            d.onclick = () => {
+                this.player.color = c;
+                localStorage.setItem('playerColor', c);
+                preview.style.backgroundColor = c;
+                this.renderColorPicker(); // refresh selection UI
+                AudioSys.click();
+            };
+            container.appendChild(d);
+        });
+    },
+    
+    updateProgressBar: function() {
+        if (this.state !== 'game') return;
+        // Find end x
+        const endObj = this.levelData.find(o => o.t === 99);
+        if(!endObj) return;
+        const totalDist = endObj.x * CONFIG.tileSize;
+        const pct = Math.min(100, Math.max(0, (this.player.x / totalDist) * 100));
+        document.getElementById('hud-progress').style.width = pct + '%';
+    },
+
+    // --- Rendering Helpers ---
+    drawLevelObject: function(ctx, obj, x, y) {
+        const s = CONFIG.tileSize;
+        if (obj.t === 1) { // Block
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(x, y, s, s);
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(x, y, s, s);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(x+5, y+5, s-10, s-10);
+        } else if (obj.t === 2) { // Spike
+            ctx.fillStyle = '#ff0055';
+            ctx.beginPath();
+            ctx.moveTo(x, y + s);
+            ctx.lineTo(x + s/2, y);
+            ctx.lineTo(x + s, y + s);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+        } else if (obj.t === 3) { // Orb
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(x + s/2, y + s/2, s/3, 0, Math.PI*2);
+            ctx.fill();
+            // Pulse ring
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(x + s/2, y + s/2, s/2, 0, Math.PI*2);
+            ctx.stroke();
+        } else if (obj.t === 99) { // Goal
+            ctx.fillStyle = '#00ff00';
+            ctx.globalAlpha = 0.5;
+            ctx.fillRect(x, 0, s*2, Game.canvas.height);
+            ctx.globalAlpha = 1;
+        }
+    },
+
+    loop: function() {
+        // Clear
+        this.ctx.fillStyle = '#050510';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Screen Shake effect
+        let shakeX = 0, shakeY = 0;
+        if (this.shake > 0) {
+            shakeX = (Math.random() - 0.5) * this.shake;
+            shakeY = (Math.random() - 0.5) * this.shake;
+            this.shake *= 0.9;
+            if(this.shake < 0.5) this.shake = 0;
+        }
+        this.ctx.save();
+        this.ctx.translate(shakeX, shakeY);
+
+        if (this.state === 'editor') {
+            Editor.draw(this.ctx);
+        } else if (this.state === 'game' || this.state === 'paused') {
+            
+            // Logic
+            if (this.state === 'game') {
+                this.player.update(this.levelData);
+                this.cameraX = this.player.x - 300; // Camera follows player
+                this.updateProgressBar();
+                
+                // Trail particles
+                if (this.player.onGround === false && Math.random() > 0.5) {
+                    this.spawnParticles(this.player.x, this.player.y + this.player.h, 1, '#fff', 1);
+                }
+            }
+            
+            const floorY = this.canvas.height - 100;
+            const camX = this.cameraX;
+
+            // Background Parallax (Stars)
+            this.ctx.fillStyle = '#fff';
+            for(let i=0; i<50; i++) {
+                let sx = (i * 100 - camX * 0.2) % this.canvas.width;
+                if(sx < 0) sx += this.canvas.width;
+                let sy = (i * 37) % (this.canvas.height - 150);
+                this.ctx.fillRect(sx, sy, 2, 2);
+            }
+
+            // Draw Floor
+            this.ctx.fillStyle = '#00f0ff';
+            this.ctx.fillRect(0, floorY, this.canvas.width, 100);
+            this.ctx.fillStyle = '#000'; // Floor top line
+            this.ctx.fillRect(0, floorY, this.canvas.width, 2);
+
+            // Draw Floor Grid (Moving)
+            this.ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+            this.ctx.lineWidth = 2;
+            let gridOff = -(camX % CONFIG.tileSize);
+            for(let i=gridOff; i<this.canvas.width; i+=CONFIG.tileSize) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(i, floorY);
+                this.ctx.lineTo(i-100, this.canvas.height); // Slant effect
+                this.ctx.stroke();
+            }
+
+            // Draw Level Objects
+            // Optimization: Only draw objects inside screen view
+            this.levelData.forEach(obj => {
+                let dx = obj.x * CONFIG.tileSize - camX;
+                let dy = floorY - (obj.y * CONFIG.tileSize) - CONFIG.tileSize;
+                
+                if (dx > -100 && dx < this.canvas.width + 100) {
+                    this.drawLevelObject(this.ctx, obj, dx, dy);
+                }
+            });
+
+            // Draw Player
+            this.player.draw(this.ctx, camX);
+
+            // Draw Particles
+            this.particles.forEach((p, index) => {
+                p.update();
+                p.draw(this.ctx, camX);
+                if(p.life <= 0) this.particles.splice(index, 1);
+            });
+        }
+
+        this.ctx.restore();
+        requestAnimationFrame(() => this.loop());
+    }
+};
+
+// Start
+Game.init();
 
 </script>
 </body>
