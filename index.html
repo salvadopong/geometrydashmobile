@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Dash V17.0: Import & Goal Fixes</title>
+    <title>Neon Dash V18.0: Level Expansion & Shop Polish</title>
     <style>
-        /* FIX 1: @import must come first */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
         :root {
@@ -72,13 +71,21 @@
         button.next { background: linear-gradient(180deg, #0a0, #040); border-color: #0f0; }
         button.next:hover { color: #0f0; }
 
-        /* Level Grid & Shop Styles (unchanged) */
+        /* Level Grid Styles */
         .level-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 15px;
             padding: 20px;
-            max-width: 500px;
+            max-width: 550px; /* Wider for more levels */
+        }
+        .level-paged-container {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%;
+        }
+        .nav-arrow {
+            width: 50px; height: 50px; padding: 0; font-size: 1.5rem; margin: 0 10px;
+            display: flex; justify-content: center; align-items: center;
         }
         .lvl-btn {
             background: #222;
@@ -91,60 +98,53 @@
         .lvl-btn:not(.locked):hover { background: var(--primary); color: #000; border-color: #fff; }
         .lvl-btn.locked { background: #111; color: #555; border-style: dotted; cursor: not-allowed; }
         
-        /* EDITOR UI (Floating Panel - now toggleable) */
-        #editor-controls {
-            position: absolute; 
-            top: 20px; 
-            right: 20px; 
-            z-index: 20; 
-            pointer-events: auto;
+        /* SHOP Styles (Polished) */
+        #shop-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+            max-width: 600px;
         }
-        
-        #editor-toggle-btn {
-            background: var(--panel);
-            border: 1px solid #555;
-            padding: 10px 15px;
-            cursor: pointer;
-            margin-bottom: 5px;
-        }
-        
-        #editor-panel {
-            background: var(--panel);
+        .costume-item {
+            background: #222;
             padding: 10px;
             border-radius: 8px;
-            border: 1px solid #333;
-            max-width: 250px;
-            display: none; /* Hidden by default */
+            text-align: center;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: all 0.1s;
         }
-        #editor-panel.show {
-            display: block;
+        .costume-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
         }
-        
-        #editor-ui {
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 5px; 
-            padding: 10px 0;
+        .costume-item.equipped {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.7);
         }
-        .tool {
-            min-width: 40px; height: 40px; border: 1px solid #444; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold;
+        .costume-preview {
+            width: 60px; height: 60px; margin: 0 auto 10px;
+            display: flex; justify-content: center; align-items: center;
         }
-        .tool.active { background: var(--primary); color: black; border-color: white; }
-        
-        /* Controls for editor mode */
-        #editor-overlay { 
-            position: absolute; 
-            top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: auto !important; 
+        .player-preview-cube {
+            width: 40px; height: 40px;
+            border: 3px solid;
+            position: relative;
         }
-        
-        #editor-info {
-            position: absolute; bottom: 20px; left: 20px;
-            background: #111; padding: 10px; border-radius: 5px;
-            font-size: 0.8rem; color: #aaa;
+        .cost {
+            font-size: 0.9rem;
+            margin-top: 5px;
+            color: #aaa;
         }
-        
+        .costume-item.equipped .cost {
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+        .costume-item:not(.unlocked) .cost {
+            color: #ff0;
+        }
+
         /* Mobile Controls & HUD (unchanged) */
         #mobile-controls {
             position: fixed; bottom: 0; left: 0; right: 0; height: 100vh;
@@ -212,16 +212,15 @@
         <div id="menu-main" class="ui-layer visible">
             <div class="menu-box">
                 <h1>NEON DASH</h1>
-                <p style="letter-spacing:4px; color:#888; font-size:0.8rem; margin-top:-10px;">V17.0</p>
+                <p style="letter-spacing:4px; color:#888; font-size:0.8rem; margin-top:-10px;">V18.0</p>
                 <button onclick="UI.startPlay()">Play Levels</button>
                 <button onclick="UI.showShop()">Shop</button>
-                <button class="secondary" onclick="UI.showEditor()">Level Editor</button>
                 
                 <div style="margin-top:10px; font-size: 0.8rem; color:#666;">
                     Controls: **Space/↑** (Action), **R** (Reset)
                 </div>
                 <div style="margin-top:5px; font-size: 0.8rem; color:#666;">
-                    Levels unlocked: <span id="unlock-count">1</span>/10 | Coins: <span id="menu-coins">0</span>
+                    Levels unlocked: <span id="unlock-count">1</span>/50 | Coins: <span id="menu-coins">0</span>
                 </div>
             </div>
         </div>
@@ -234,8 +233,6 @@
                     <div class="level-grid" id="lvl-grid"></div>
                     <button id="level-next" class="nav-arrow" onclick="UI.changeLevelPage(1)" disabled>&#9654;</button>
                 </div>
-                <button class="secondary" onclick="Game.loadCustom()">CUSTOM</button>
-                <br>
                 <button onclick="UI.home()">BACK</button>
             </div>
         </div>
@@ -257,42 +254,6 @@
                 <button class="secondary" onclick="UI.home()">MENU</button>
             </div>
         </div>
-
-        <div id="editor-overlay" class="ui-layer hidden" style="pointer-events: none;">
-            <div id="editor-controls" style="pointer-events: auto;">
-                <button id="editor-toggle-btn" onclick="Editor.togglePanel()">Show Tools</button>
-                
-                <div id="editor-panel">
-                    <h3 style="margin: 0; padding: 5px 0 10px;">TOOLS</h3>
-                    <div id="editor-ui">
-                        <div class="tool active" onclick="Editor.setTool(1)">BLK</div>
-                        <div class="tool" onclick="Editor.setTool(100)">SPAM</div>
-                        <div class="tool" onclick="Editor.setTool(2)">SPK</div>
-                        <div class="tool" onclick="Editor.setTool(7)">PAD</div>
-                        <div class="tool" onclick="Editor.setTool(3)">COI</div>
-                        <div class="tool" style="border-color:#0f0; color:#0f0;" onclick="Editor.setTool(4)">SHP</div>
-                        <div class="tool" style="border-color:#fa0; color:#fa0;" onclick="Editor.setTool(5)">UFO</div>
-                        <div class="tool" style="border-color:#0ff; color:#0ff;" onclick="Editor.setTool(6)">CUB</div>
-                        <div class="tool" style="border-color:#f50; color:#f50;" onclick="Editor.setTool(11)">WAVE</div>
-                        <div class="tool" style="border-color:#0f5; color:#0f5;" onclick="Editor.setTool(12)">ROBOT</div>
-                        <div class="tool" style="border-color:#fff; color:#fff; background:#55f;" onclick="Editor.setTool(8)">GRV</div>
-                        <div class="tool" style="border-color:#f80; color:#f80; background:#fff;" onclick="Editor.setTool(9)">MINI</div>
-                        <div class="tool" style="border-color:#08f; color:#08f; background:#000;" onclick="Editor.setTool(10)">MACR</div>
-                        <div class="tool" style="border-color:#fff; color:#fff; background:#0f0;" onclick="Editor.setTool(99)">GOAL</div>
-                        <div class="tool" style="border-color:#f55; color:#f55;" onclick="Editor.setTool(0)">DEL</div>
-                        <div style="width:100%; display: flex; gap:5px; margin-top: 10px;">
-                            <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.test()">TEST</button>
-                            <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.save()">SAVE</button>
-                        </div>
-                    </div>
-                    <button class="secondary" style="width:100%; padding: 5px; font-size: 1rem; margin-top: 10px;" onclick="UI.home()">EXIT</button>
-                </div>
-            </div>
-            
-            <div id="editor-info">
-                Arrows: Move Camera | Click: Place/Delete
-            </div>
-        </div>
     </div>
 
 <script>
@@ -306,12 +267,12 @@ const CFG = {
     TILE_SEP_FACTOR: 2, 
     MINI_SCALE: 0.6, 
     MACRO_SCALE: 1.0, 
-    maxHeight: -250, 
+    // MaxHeight removed by setting it very high/low. Now the floor/ceiling are the limits.
+    maxHeight: -1000, 
     START_X: 30, 
     PAD_JUMP: -25, 
-    TOTAL_LEVELS: 10, 
+    TOTAL_LEVELS: 50, // INCREASED TO 50
     LEVELS_PER_PAGE: 10, 
-    EDITOR_SPAM_RATE: 1, 
 };
 
 // --- GLOBAL STATE ---
@@ -342,6 +303,8 @@ const SKINS = [
     { name: "Electric Purple", cost: 25, main: '#9d00ff', secondary: '#00ffaa' },
     { name: "Shadow Black", cost: 50, main: '#111111', secondary: '#ffffff' },
     { name: "Gold Plated", cost: 100, main: '#ffd700', secondary: '#aa5500' },
+    { name: "Acid Green", cost: 150, main: '#00ff00', secondary: '#ffff00' },
+    { name: "Deep Space", cost: 200, main: '#000088', secondary: '#88aaff' },
 ];
 
 // --- AUDIO (unchanged) ---
@@ -416,7 +379,7 @@ const AUDIO = {
 // Helper function to create obstacle arrays with better spacing
 const createObstacle = (t, x, y) => ({t:t, x:x * CFG.TILE_SEP_FACTOR, y:y});
 
-// --- HAND-CRAFTED LEVEL DATA (10 Longer Levels) ---
+// --- HAND-CRAFTED LEVEL DATA (10 Original + 4 NEW High-Density + 36 PLACEHOLDERS) ---
 const L = createObstacle; // Shorthand for creation
 const S = CFG.TILE_SEP_FACTOR; // Shorthand for spacing factor
 
@@ -450,6 +413,26 @@ const LEVELS = [
     
     // 9. Everything Gauntlet - Combining Mini Robot, Wave, and Ship in quick succession (Length: 200 * S)
     [L(1,40,0), L(12,45,0), L(9,47,0), L(1,50,0), L(2,52,0), L(11,55,0), L(1,60,2), L(4,65,2), L(1,75,4), L(6,80,0), L(10,82,0), L(1,85,0), L(7,90,0), L(2,95,0), L(4,100,0), L(1,110,3), L(6,120,0), L(99,200,0)],
+
+    // --- NEW HIGH-DENSITY, FULL-VERTICAL LEVELS START HERE --- (Length: 220 * S)
+
+    // 10. UFO Ceiling Scrape: UFO mode, dense blocks forcing near-ceiling/near-floor flights
+    [L(1,40,0), L(5,45,0), L(1,50,5), L(1,51,5), L(1,52,5), L(1,55,0), L(1,56,0), L(1,57,0), L(1,60,5), L(1,61,5), L(1,65,0), L(1,66,0), L(2,70,5), L(2,71,5), L(1,75,0), L(1,76,0), L(3,80,2), L(1,85,5), L(1,86,5), L(2,90,0), L(2,91,0), L(1,95,5), L(1,96,5), L(1,100,0), L(1,101,0), L(1,105,5), L(1,106,5), L(1,110,0), L(1,111,0), L(1,115,5), L(1,116,5), L(1,120,0), L(1,121,0), L(6,125,1), L(1,130,0), L(99,220,0)],
+
+    // 11. Ship Corridor Trap: Ship mode, complex spikes covering multiple vertical layers
+    [L(1,40,0), L(4,45,1), L(2,50,0), L(2,50,5), L(1,55,2), L(2,57,1), L(2,57,4), L(1,60,3), L(2,63,0), L(2,63,5), L(1,66,2), L(2,69,1), L(2,69,4), L(1,72,3), L(1,75,0), L(1,75,5), L(1,78,0), L(1,78,5), L(1,81,0), L(1,81,5), L(3,85,3), L(2,88,1), L(2,88,4), L(1,92,2), L(2,95,0), L(2,95,5), L(1,100,3), L(2,103,1), L(2,103,4), L(6,107,1), L(1,115,0), L(99,220,0)],
+
+    // 12. Gravity Cascade: Cube mode starting with a Mini, complex gravity flips
+    [L(1,40,0), L(9,43,1), L(8,45,2), L(1,50,4), L(2,52,4), L(1,55,4), L(2,57,4), L(8,60,2), L(1,65,0), L(2,67,0), L(1,70,0), L(2,72,0), L(8,75,2), L(1,80,4), L(2,82,4), L(1,85,4), L(2,87,4), L(3,90,2), L(8,93,2), L(1,98,0), L(2,100,0), L(1,103,0), L(2,105,0), L(10,108,1), L(6,112,0), L(1,115,0), L(99,220,0)],
+
+    // 13. Wave and Ship Transition: Requires rapid mode change and precision flight
+    [L(1,40,0), L(11,43,1), L(1,45,3), L(1,47,1), L(1,49,3), L(1,51,1), L(4,53,1), L(2,55,0), L(2,55,5), L(1,57,3), L(1,60,2), L(2,63,1), L(2,63,4), L(1,66,3), L(3,70,2), L(1,75,0), L(1,76,0), L(5,79,1), L(1,82,5), L(1,83,5), L(1,84,5), L(1,87,0), L(1,88,0), L(1,89,0), L(6,92,1), L(1,95,0), L(99,220,0)],
+
+    // --- PLACEHOLDERS FOR LEVELS 14 - 49 (Need to be expanded later) ---
+    ...Array(36).fill(0).map((_, i) => [
+        L(1,40,0), L(1,45,2), L(2,50,0), L(3,60,1), L(7,70,0), L(1,80,3), 
+        L(99, 100 + i * 5, 0)
+    ]),
 ];
 
 
@@ -468,7 +451,7 @@ const Game = {
     bgHue: 200, 
     bgSat: 15,  
     isMobile: window.innerWidth <= 768, 
-    goalX: 100000, // A very distant default goal
+    goalX: 100000, 
 
     init: function() {
         this.resize();
@@ -513,15 +496,6 @@ const Game = {
         // --- IMPORTANT: Deep copy the level data from the master list ---
         this.level = JSON.parse(JSON.stringify(LEVELS[idx])); 
         this.start(theme[0]); 
-    },
-    loadCustom: function() {
-        let d = localStorage.getItem('nd_custom');
-        if(!d) return alert("No Saved Level!");
-        this.currLvlIdx = -1;
-        this.level = JSON.parse(d);
-        this.bgHue = 240; 
-        this.bgSat = 10;
-        this.start(150); 
     },
     start: function(bgmFreq) {
         this.state = 'game';
@@ -592,7 +566,7 @@ const Game = {
             nextLvl = 1;
         }
 
-        if(this.currLvlIdx !== -1 && nextLvl < CFG.TOTAL_LEVELS) {
+        if(nextLvl < CFG.TOTAL_LEVELS) {
             if (nextLvl + 1 > unlocked) {
                 unlocked = nextLvl + 1; 
                 localStorage.setItem('nd_level', unlocked);
@@ -659,20 +633,22 @@ const Game = {
             Player.update();
             this.camX = Player.x - 300;
         } 
-        // Camera movement for editor mode (new)
-        else if (this.state === 'editor' && Input.editorMoveX !== 0) {
-            this.camX += Input.editorMoveX * 10;
-        }
+        // NOTE: Editor mode removed, so no editor camera controls needed.
 
         let targetY = Player.y * 0.6;
+        // The camY calculation is the core of vertical movement. 
+        // It keeps the player near the vertical center while accommodating large Y changes.
         let camY = (this.canvas.height - 150) - targetY; 
         
+        // Background grid lines
         ctx.strokeStyle = `hsla(${hue}, 50%, 50%, 0.1)`;
         ctx.lineWidth = 2;
         let ox = -(this.camX % CFG.tile);
         for(let i=ox; i<this.canvas.width; i+=CFG.tile) {
             ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i-100, this.canvas.height); ctx.stroke();
         }
+        
+        // Floor drawing
         ctx.fillStyle = Player.mainColor;
         ctx.fillRect(0, camY, this.canvas.width, 2);
         ctx.fillStyle = '#111';
@@ -680,7 +656,11 @@ const Game = {
 
         this.level.forEach(o => {
             let dx = o.x * CFG.tile - this.camX;
-            let dy = camY - (o.y * CFG.tile) - CFG.tile;
+            // oy is the world position of the top of the block, assuming the floor is y=0
+            let oy = -(o.y * CFG.tile); 
+            // dy is the screen position of the top of the block
+            let dy = camY + oy - CFG.tile; 
+
             if(dx < -CFG.tile || dx > this.canvas.width) return;
 
             if(o.t===1) { // Block
@@ -733,7 +713,7 @@ const Game = {
             }
         });
 
-        if(this.state !== 'editor' && this.state !== 'dead') Player.draw(ctx, camY);
+        if(this.state !== 'dead') Player.draw(ctx, camY);
 
         if(this.state === 'game') {
             let endX = this.goalX;
@@ -748,7 +728,7 @@ const Game = {
     }
 };
 
-// --- PLAYER PHYSICS (Updated with Goal Check) ---
+// --- PLAYER PHYSICS ---
 const Player = {
     x:0, y:0, w:40, h:40, 
     dx: CFG.spd, dy:0, 
@@ -802,12 +782,11 @@ const Player = {
     },
 
     update: function() {
-        // --- FIX 2: Check for Goal Collision before moving too far ---
+        // Check for Goal Collision before moving too far
         if (this.x + this.w + this.dx > Game.goalX) {
             Game.win();
             return;
         }
-        // -----------------------------------------------------------
 
         const gravityFactor = this.scale * (this.g > 0 ? 1 : -1);
         const termScaled = CFG.term * this.scale;
@@ -861,15 +840,26 @@ const Player = {
         const floorHeight = 0;
         const ceilingHeight = CFG.maxHeight;
 
-        if(this.g > 0) { 
+        // Bounding box checks (Floor and Ceiling)
+        if(this.g > 0) { // Normal Gravity
             if(this.y > floorHeight) { this.y = floorHeight; this.dy = 0; this.onGround = true; }
-            if(this.y - this.h < ceilingHeight) { this.y = ceilingHeight + this.h; this.dy = 0; } 
-        } else { 
+            if(this.y - this.h < ceilingHeight) { 
+                // CRITICAL CHANGE: Only stop the player at the top, do not crash them unless it's wave mode
+                if (this.mode === 'wave') { Game.crash(); } 
+                else { this.y = ceilingHeight + this.h; this.dy = 0; } 
+            } 
+        } else { // Inverted Gravity
             if(this.y - this.h < ceilingHeight) { this.y = ceilingHeight + this.h; this.dy = 0; this.onGround = true; }
-            if(this.y > floorHeight) { this.y = floorHeight; this.dy = 0; }
+            if(this.y > floorHeight) { 
+                // CRITICAL CHANGE: Only stop the player at the top (which is the bottom of the screen in inverted mode)
+                if (this.mode === 'wave') { Game.crash(); } 
+                else { this.y = floorHeight; this.dy = 0; } 
+            }
         }
         
+        // Final wave mode crash check
         if (this.mode === 'wave') {
+            // Wave mode crashes if it goes outside the bounds
             if(this.g > 0 && (this.y > floorHeight+1 || this.y - this.h < ceilingHeight-1)) Game.crash();
             if(this.g < 0 && (this.y - this.h < ceilingHeight-1 || this.y > floorHeight+1)) Game.crash();
         }
@@ -891,7 +881,6 @@ const Player = {
             if(r>ol && l<or && b>ot && t<ob) {
                 
                 if(o.t===2) Game.crash();
-                else if(o.t===99) { /* Goal check is now handled in Player.update() */ }
                 else if(o.t===3) { 
                     totalCoins++;
                     AUDIO.coin();
@@ -1045,7 +1034,7 @@ const Player = {
     }
 };
 
-// --- UI (Level Grid Unchanged) ---
+// --- UI (Level Grid Updated for Pagination) ---
 const UI = {
     hide: () => document.querySelectorAll('.ui-layer').forEach(e => e.classList.replace('visible','hidden')),
     show: (id) => { 
@@ -1060,7 +1049,6 @@ const UI = {
         Game.state='menu'; 
         UI.show('menu-main'); 
         document.getElementById('hud').style.display='none'; 
-        Input.editorMoveX = 0; // Stop camera movement
         Game.checkMobileControls(); 
     },
     
@@ -1100,8 +1088,9 @@ const UI = {
             grid.appendChild(b);
         }
         
-        prevBtn.disabled = true;
-        nextBtn.disabled = true;
+        const maxPage = Math.ceil(CFG.TOTAL_LEVELS / CFG.LEVELS_PER_PAGE);
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= maxPage;
     },
 
     showLevels: () => {
@@ -1109,20 +1098,7 @@ const UI = {
         UI.show('menu-levels');
     },
 
-    showEditor: () => { 
-        Game.state = 'editor';
-        Game.level = [];
-        Game.camX = 0;
-        
-        // Show only the editor controls container
-        UI.hide();
-        document.getElementById('editor-overlay').classList.replace('hidden', 'visible');
-        document.getElementById('editor-panel').classList.remove('show'); // Hide panel by default
-        
-        let d = localStorage.getItem('nd_custom');
-        if(d) Game.level = JSON.parse(d);
-        Editor.setTool(Editor.tool);
-    },
+    // Editor functions removed as requested.
 
     renderShop: function() {
         const shopContent = document.getElementById('shop-content');
@@ -1177,51 +1153,10 @@ const UI = {
     }
 };
 
-// --- EDITOR (Added toggle function) ---
-const Editor = {
-    tool: 1,
-    lastX: -1,
-    lastY: -1,
-    setTool: function(t) {
-        this.tool = t;
-        document.querySelectorAll('#editor-ui .tool').forEach(el => el.classList.remove('active'));
-        const toolLabels = {1:'BLK', 100:'SPAM', 2:'SPK', 7:'PAD', 3:'COI', 4:'SHP', 5:'UFO', 6:'CUB', 11:'WAVE', 12:'ROBOT', 8:'GRV', 9:'MINI', 10:'MACR', 99:'GOAL', 0:'DEL'};
-        document.querySelectorAll('#editor-ui .tool').forEach(btn => {
-            if (btn.innerText === toolLabels[t]) btn.classList.add('active');
-        });
-    },
-    placeBlock: function(gx, gy, tool) {
-        if (gy < 0) return;
-        
-        Game.level = Game.level.filter(o=>!(o.x===gx && o.y===gy));
-        
-        if(tool !== 0 && tool !== 100) {
-            Game.level.push({t:tool, x:gx, y:gy});
-        }
-        else if (tool === 100) { 
-             Game.level.push({t:1, x:gx, y:gy});
-        }
-    },
-    test: function() { localStorage.setItem('nd_custom', JSON.stringify(Game.level)); Game.loadCustom(); },
-    save: function() { localStorage.setItem('nd_custom', JSON.stringify(Game.level)); alert('Saved!'); },
-    togglePanel: function() {
-        const panel = document.getElementById('editor-panel');
-        const btn = document.getElementById('editor-toggle-btn');
-        if (panel.classList.contains('show')) {
-            panel.classList.remove('show');
-            btn.innerText = "Show Tools";
-        } else {
-            panel.classList.add('show');
-            btn.innerText = "Hide Tools";
-        }
-    }
-};
-
-// --- INPUT (Updated for editor click handling) ---
+// --- INPUT (Simplified - Editor functionality removed) ---
 const Input = { 
     held: false, 
-    mousePressed: false,
-    editorMoveX: 0 
+    mousePressed: false
 };
 const action = () => { Input.held=true; AUDIO.init(); if(Game.state==='game') Player.jump(); };
 const release = () => { Input.held=false; };
@@ -1229,11 +1164,6 @@ const release = () => { Input.held=false; };
 const isUIElement = (target) => {
     // Check if the target is within any UI layer or mobile control button
     return target.closest('.ui-layer') || target.closest('.mobile-btn');
-};
-
-const isEditorPanelElement = (target) => {
-    // Check if the target is within the main editor panel (not just the toggle button)
-    return target.closest('#editor-panel');
 };
 
 Input.touchStartAction = (e) => { 
@@ -1249,11 +1179,6 @@ Input.touchEndAction = (e) => {
 
 window.onkeydown = (e) => { 
     if(e.repeat) return; 
-    
-    if(Game.state === 'editor') {
-        if(e.code === 'ArrowRight') Input.editorMoveX = 1;
-        else if(e.code === 'ArrowLeft') Input.editorMoveX = -1;
-    }
     
     if(e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault(); 
@@ -1271,56 +1196,17 @@ window.onkeyup = (e) => {
     if(e.code === 'Space' || e.code === 'ArrowUp') {
         release();
     }
-    if(Game.state === 'editor') {
-        if(e.code === 'ArrowRight' || e.code === 'ArrowLeft') Input.editorMoveX = 0;
-    }
 };
 
 window.onmousedown = (e) => {
-    if(isEditorPanelElement(e.target)) return; 
-    
-    if(!isUIElement(e.target)) {
+    if(!isUIElement(e.target) && Game.state === 'game') {
         Input.mousePressed = true;
-
-        if(Game.state === 'editor' && !e.target.closest('#editor-toggle-btn')) {
-            let mx = e.clientX + Game.camX;
-            let gy = Math.floor(-(e.clientY - (Game.canvas.height - 150))/CFG.tile); 
-            let gx = Math.floor(mx/CFG.tile);
-            
-            Editor.placeBlock(gx, gy, Editor.tool);
-            Editor.lastX = gx;
-            Editor.lastY = gy;
-        } else if (Game.state === 'game') {
-            action();
-        }
-    }
-};
-
-window.onmousemove = (e) => {
-    if(Game.state === 'editor' && Input.mousePressed && Editor.tool === 100) {
-        let mx = e.clientX + Game.camX;
-        let gy = Math.floor(-(e.clientY - (Game.canvas.height - 150))/CFG.tile); 
-        let gx = Math.floor(mx/CFG.tile);
-
-        const dx = gx - Editor.lastX;
-        const dy = gy - Editor.lastY;
-        const dist = Math.max(Math.abs(dx), Math.abs(dy));
-
-        for (let i = 0; i <= dist; i += CFG.EDITOR_SPAM_RATE) {
-            const x = Editor.lastX + Math.round((dx / dist) * i);
-            const y = Editor.lastY + Math.round((dy / dist) * i);
-            Editor.placeBlock(x, y, Editor.tool);
-        }
-
-        Editor.lastX = gx;
-        Editor.lastY = gy;
+        action();
     }
 };
 
 window.onmouseup = () => { 
     Input.mousePressed = false;
-    Editor.lastX = -1;
-    Editor.lastY = -1;
     release(); 
 };
 
@@ -1328,48 +1214,10 @@ window.ontouchstart = (e) => {
     if (isUIElement(e.target)) return; 
 
     Input.mousePressed = true;
-    
-    if (Game.state === 'editor' && e.touches.length === 1 && !e.target.closest('#editor-controls')) {
-        e.preventDefault(); 
-        const touch = e.touches[0];
-        let mx = touch.clientX + Game.camX;
-        let gy = Math.floor(-(touch.clientY - (Game.canvas.height - 150))/CFG.tile); 
-        let gx = Math.floor(mx/CFG.tile);
-        
-        Editor.placeBlock(gx, gy, Editor.tool);
-        Editor.lastX = gx;
-        Editor.lastY = gy;
-    }
 };
-
-window.ontouchmove = (e) => {
-    if(Game.state === 'editor' && Input.mousePressed && Editor.tool === 100 && e.touches.length === 1) {
-        e.preventDefault(); 
-        
-        const touch = e.touches[0];
-        let mx = touch.clientX + Game.camX;
-        let gy = Math.floor(-(touch.clientY - (Game.canvas.height - 150))/CFG.tile); 
-        let gx = Math.floor(mx/CFG.tile);
-
-        const dx = gx - Editor.lastX;
-        const dy = gy - Editor.lastY;
-        const dist = Math.max(Math.abs(dx), Math.abs(dy));
-
-        for (let i = 0; i <= dist; i += CFG.EDITOR_SPAM_RATE) {
-            const x = Editor.lastX + Math.round((dx / dist) * i);
-            const y = Editor.lastY + Math.round((dy / dist) * i);
-            Editor.placeBlock(x, y, Editor.tool);
-        }
-
-        Editor.lastX = gx;
-        Editor.lastY = gy;
-    }
-}
 
 window.ontouchend = () => { 
     Input.mousePressed = false;
-    Editor.lastX = -1;
-    Editor.lastY = -1;
 };
 
 Game.init();
