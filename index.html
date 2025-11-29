@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Dash V15.0: Editor Cleanup & Longer Levels</title>
+    <title>Neon Dash V16.0: Powerup Reset & Editor Toggle</title>
     <style>
         :root {
             --primary: #00f0ff;
@@ -89,24 +89,40 @@
         .lvl-btn:not(.locked):hover { background: var(--primary); color: #000; border-color: #fff; }
         .lvl-btn.locked { background: #111; color: #555; border-style: dotted; cursor: not-allowed; }
         
-        /* EDITOR UI (Relocated and restyled) */
+        /* EDITOR UI (Floating Panel - now toggleable) */
         #editor-controls {
             position: absolute; 
             top: 20px; 
             right: 20px; 
             z-index: 20; 
             pointer-events: auto;
+        }
+        
+        #editor-toggle-btn {
+            background: var(--panel);
+            border: 1px solid #555;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        
+        #editor-panel {
             background: var(--panel);
             padding: 10px;
             border-radius: 8px;
             border: 1px solid #333;
+            max-width: 250px;
+            display: none; /* Hidden by default */
         }
+        #editor-panel.show {
+            display: block;
+        }
+        
         #editor-ui {
             display: flex; 
             flex-wrap: wrap; 
             gap: 5px; 
             padding: 10px 0;
-            max-width: 250px;
         }
         .tool {
             min-width: 40px; height: 40px; border: 1px solid #444; cursor: pointer;
@@ -194,7 +210,7 @@
         <div id="menu-main" class="ui-layer visible">
             <div class="menu-box">
                 <h1>NEON DASH</h1>
-                <p style="letter-spacing:4px; color:#888; font-size:0.8rem; margin-top:-10px;">V15.0</p>
+                <p style="letter-spacing:4px; color:#888; font-size:0.8rem; margin-top:-10px;">V16.0</p>
                 <button onclick="UI.startPlay()">Play Levels</button>
                 <button onclick="UI.showShop()">Shop</button>
                 <button class="secondary" onclick="UI.showEditor()">Level Editor</button>
@@ -242,29 +258,33 @@
 
         <div id="editor-overlay" class="ui-layer hidden" style="pointer-events: none;">
             <div id="editor-controls" style="pointer-events: auto;">
-                <h3 style="margin: 0; padding: 5px 0 10px;">EDITOR</h3>
-                <div id="editor-ui">
-                    <div class="tool active" onclick="Editor.setTool(1)">BLK</div>
-                    <div class="tool" onclick="Editor.setTool(100)">SPAM</div>
-                    <div class="tool" onclick="Editor.setTool(2)">SPK</div>
-                    <div class="tool" onclick="Editor.setTool(7)">PAD</div>
-                    <div class="tool" onclick="Editor.setTool(3)">COI</div>
-                    <div class="tool" style="border-color:#0f0; color:#0f0;" onclick="Editor.setTool(4)">SHP</div>
-                    <div class="tool" style="border-color:#fa0; color:#fa0;" onclick="Editor.setTool(5)">UFO</div>
-                    <div class="tool" style="border-color:#0ff; color:#0ff;" onclick="Editor.setTool(6)">CUB</div>
-                    <div class="tool" style="border-color:#f50; color:#f50;" onclick="Editor.setTool(11)">WAVE</div>
-                    <div class="tool" style="border-color:#0f5; color:#0f5;" onclick="Editor.setTool(12)">ROBOT</div>
-                    <div class="tool" style="border-color:#fff; color:#fff; background:#55f;" onclick="Editor.setTool(8)">GRV</div>
-                    <div class="tool" style="border-color:#f80; color:#f80; background:#fff;" onclick="Editor.setTool(9)">MINI</div>
-                    <div class="tool" style="border-color:#08f; color:#08f; background:#000;" onclick="Editor.setTool(10)">MACR</div>
-                    <div class="tool" style="border-color:#fff; color:#fff; background:#0f0;" onclick="Editor.setTool(99)">GOAL</div>
-                    <div class="tool" style="border-color:#f55; color:#f55;" onclick="Editor.setTool(0)">DEL</div>
-                    <div style="width:100%; display: flex; gap:5px; margin-top: 10px;">
-                        <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.test()">TEST</button>
-                        <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.save()">SAVE</button>
+                <button id="editor-toggle-btn" onclick="Editor.togglePanel()">Show Tools</button>
+                
+                <div id="editor-panel">
+                    <h3 style="margin: 0; padding: 5px 0 10px;">TOOLS</h3>
+                    <div id="editor-ui">
+                        <div class="tool active" onclick="Editor.setTool(1)">BLK</div>
+                        <div class="tool" onclick="Editor.setTool(100)">SPAM</div>
+                        <div class="tool" onclick="Editor.setTool(2)">SPK</div>
+                        <div class="tool" onclick="Editor.setTool(7)">PAD</div>
+                        <div class="tool" onclick="Editor.setTool(3)">COI</div>
+                        <div class="tool" style="border-color:#0f0; color:#0f0;" onclick="Editor.setTool(4)">SHP</div>
+                        <div class="tool" style="border-color:#fa0; color:#fa0;" onclick="Editor.setTool(5)">UFO</div>
+                        <div class="tool" style="border-color:#0ff; color:#0ff;" onclick="Editor.setTool(6)">CUB</div>
+                        <div class="tool" style="border-color:#f50; color:#f50;" onclick="Editor.setTool(11)">WAVE</div>
+                        <div class="tool" style="border-color:#0f5; color:#0f5;" onclick="Editor.setTool(12)">ROBOT</div>
+                        <div class="tool" style="border-color:#fff; color:#fff; background:#55f;" onclick="Editor.setTool(8)">GRV</div>
+                        <div class="tool" style="border-color:#f80; color:#f80; background:#fff;" onclick="Editor.setTool(9)">MINI</div>
+                        <div class="tool" style="border-color:#08f; color:#08f; background:#000;" onclick="Editor.setTool(10)">MACR</div>
+                        <div class="tool" style="border-color:#fff; color:#fff; background:#0f0;" onclick="Editor.setTool(99)">GOAL</div>
+                        <div class="tool" style="border-color:#f55; color:#f55;" onclick="Editor.setTool(0)">DEL</div>
+                        <div style="width:100%; display: flex; gap:5px; margin-top: 10px;">
+                            <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.test()">TEST</button>
+                            <button style="flex:1; padding: 5px; font-size: 1rem; margin:0;" onclick="Editor.save()">SAVE</button>
+                        </div>
                     </div>
+                    <button class="secondary" style="width:100%; padding: 5px; font-size: 1rem; margin-top: 10px;" onclick="UI.home()">EXIT</button>
                 </div>
-                <button class="secondary" style="width:100%; padding: 5px; font-size: 1rem; margin-top: 10px;" onclick="UI.home()">EXIT</button>
             </div>
             
             <div id="editor-info">
@@ -281,11 +301,11 @@ const CFG = {
     spd: 8.5,     
     term: 18,     
     tile: 50,
-    TILE_SEP_FACTOR: 2, // New setting for wider gaps
+    TILE_SEP_FACTOR: 2, 
     MINI_SCALE: 0.6, 
     MACRO_SCALE: 1.0, 
     maxHeight: -250, 
-    START_X: 10, // Moved earlier
+    START_X: 30, // Reverted to normal start position
     PAD_JUMP: -25, 
     TOTAL_LEVELS: 10, 
     LEVELS_PER_PAGE: 10, 
@@ -431,7 +451,7 @@ const LEVELS = [
 ];
 
 
-// --- ENGINE (No functional changes) ---
+// --- ENGINE (Significant change in retry logic) ---
 const Game = {
     canvas: document.getElementById('gameCanvas'),
     ctx: document.getElementById('gameCanvas').getContext('2d'),
@@ -487,7 +507,7 @@ const Game = {
         this.bgHue = theme[1];
         this.bgSat = theme[2];
         
-        // Note: Using JSON.parse(JSON.stringify) creates a deep copy of the level structure
+        // --- IMPORTANT: Deep copy the level data from the master list ---
         this.level = JSON.parse(JSON.stringify(LEVELS[idx])); 
         this.start(theme[0]); 
     },
@@ -538,6 +558,11 @@ const Game = {
             UI.hide();
             document.getElementById('tutorial-msg').style.display = 'none';
             this.checkMobileControls(); 
+            
+            // --- NEW: Reload level data if it's a built-in level ---
+            if(this.currLvlIdx !== -1) {
+                 this.level = JSON.parse(JSON.stringify(LEVELS[this.currLvlIdx]));
+            }
         }
     },
     win: function() {
@@ -545,7 +570,7 @@ const Game = {
         AUDIO.win();
         AUDIO.stopBGM();
         document.getElementById('tutorial-msg').style.display = 'none';
-        document.getElementById('pause-title').innerText = "COMPLETE!";
+        document.getElementById('pause-title').innerText = "LEVEL COMPLETE";
         document.getElementById('pause-p').innerText = "100%";
         
         let nextLvl = this.currLvlIdx + 1; 
@@ -861,11 +886,11 @@ const Player = {
                      this.onGround=false; 
                      AUDIO.pad();
                 }
-                else if(o.t===4) this.setMode('ship');
-                else if(o.t===5) this.setMode('ufo');
-                else if(o.t===6) this.setMode('cube');
-                else if(o.t===11) this.setMode('wave');
-                else if(o.t===12) this.setMode('robot');
+                else if(o.t===4) { this.setMode('ship'); Game.level.splice(i, 1); } // Remove portal on use
+                else if(o.t===5) { this.setMode('ufo'); Game.level.splice(i, 1); }
+                else if(o.t===6) { this.setMode('cube'); Game.level.splice(i, 1); }
+                else if(o.t===11) { this.setMode('wave'); Game.level.splice(i, 1); }
+                else if(o.t===12) { this.setMode('robot'); Game.level.splice(i, 1); }
                 else if(o.t===8) { 
                     this.g *= -1;
                     this.g = Math.abs(CFG.g * this.scale) * Math.sign(this.g); 
@@ -1003,7 +1028,7 @@ const Player = {
     }
 };
 
-// --- UI (Level Grid Updated) ---
+// --- UI (Level Grid Unchanged) ---
 const UI = {
     hide: () => document.querySelectorAll('.ui-layer').forEach(e => e.classList.replace('visible','hidden')),
     show: (id) => { 
@@ -1072,9 +1097,10 @@ const UI = {
         Game.level = [];
         Game.camX = 0;
         
-        // Show only the editor controls
+        // Show only the editor controls container
         UI.hide();
         document.getElementById('editor-overlay').classList.replace('hidden', 'visible');
+        document.getElementById('editor-panel').classList.remove('show'); // Hide panel by default
         
         let d = localStorage.getItem('nd_custom');
         if(d) Game.level = JSON.parse(d);
@@ -1134,7 +1160,7 @@ const UI = {
     }
 };
 
-// --- EDITOR (Added keyboard camera controls) ---
+// --- EDITOR (Added toggle function) ---
 const Editor = {
     tool: 1,
     lastX: -1,
@@ -1161,9 +1187,20 @@ const Editor = {
     },
     test: function() { localStorage.setItem('nd_custom', JSON.stringify(Game.level)); Game.loadCustom(); },
     save: function() { localStorage.setItem('nd_custom', JSON.stringify(Game.level)); alert('Saved!'); },
+    togglePanel: function() {
+        const panel = document.getElementById('editor-panel');
+        const btn = document.getElementById('editor-toggle-btn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.innerText = "Show Tools";
+        } else {
+            panel.classList.add('show');
+            btn.innerText = "Hide Tools";
+        }
+    }
 };
 
-// --- INPUT (Updated for editor movement) ---
+// --- INPUT (Updated for editor click handling) ---
 const Input = { 
     held: false, 
     mousePressed: false,
@@ -1173,7 +1210,13 @@ const action = () => { Input.held=true; AUDIO.init(); if(Game.state==='game') Pl
 const release = () => { Input.held=false; };
 
 const isUIElement = (target) => {
-    return target.closest('.ui-layer') || target.closest('.mobile-btn') || target.closest('#editor-controls');
+    // Check if the target is within any UI layer or mobile control button
+    return target.closest('.ui-layer') || target.closest('.mobile-btn');
+};
+
+const isEditorPanelElement = (target) => {
+    // Check if the target is within the main editor panel (not just the toggle button)
+    return target.closest('#editor-panel');
 };
 
 Input.touchStartAction = (e) => { 
@@ -1217,10 +1260,12 @@ window.onkeyup = (e) => {
 };
 
 window.onmousedown = (e) => {
+    if(isEditorPanelElement(e.target)) return; 
+    
     if(!isUIElement(e.target)) {
         Input.mousePressed = true;
 
-        if(Game.state === 'editor') {
+        if(Game.state === 'editor' && !e.target.closest('#editor-toggle-btn')) {
             let mx = e.clientX + Game.camX;
             let gy = Math.floor(-(e.clientY - (Game.canvas.height - 150))/CFG.tile); 
             let gx = Math.floor(mx/CFG.tile);
@@ -1228,7 +1273,7 @@ window.onmousedown = (e) => {
             Editor.placeBlock(gx, gy, Editor.tool);
             Editor.lastX = gx;
             Editor.lastY = gy;
-        } else {
+        } else if (Game.state === 'game') {
             action();
         }
     }
@@ -1267,7 +1312,7 @@ window.ontouchstart = (e) => {
 
     Input.mousePressed = true;
     
-    if (Game.state === 'editor' && e.touches.length === 1) {
+    if (Game.state === 'editor' && e.touches.length === 1 && !e.target.closest('#editor-controls')) {
         e.preventDefault(); 
         const touch = e.touches[0];
         let mx = touch.clientX + Game.camX;
