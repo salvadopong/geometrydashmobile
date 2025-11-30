@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neon Dash Play Online</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
         
@@ -485,10 +486,85 @@
             transform: scale(0.9);
             box-shadow: 0 0 50px var(--neon-pink);
         }
+
+        /* Editor Styles */
+        .editor-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+
+        .editor-tool {
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(0,0,0,0.7);
+        }
+
+        .editor-tool:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        .editor-tool.active {
+            background: var(--neon-blue);
+            color: black;
+        }
+
+        .editor-preview {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .screen-shake {
+            animation: screenShake 0.5s ease-out;
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) translateY(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px) translateY(5px); }
+        }
+
+        .transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--neon-blue);
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .transition-overlay.active {
+            opacity: 0.7;
+        }
         
     </style>
 </head>
 <body>
+    <div class="transition-overlay" id="transition-overlay"></div>
     <canvas id="gameCanvas"></canvas>
 
     <div id="hud">
@@ -511,6 +587,8 @@
             <p style="font-size: 1.5em; color: var(--neon-yellow); text-shadow: 0 0 10px var(--neon-yellow);">Coins: <span id="menu-coins">0</span> 💰</p>
             <button onclick="UI.startPlay()" class="green">PLAY</button>
             <button class="pink" onclick="UI.showShop()">CUSTOMIZE</button>
+            <button onclick="UI.showEditor()" style="border-color: var(--neon-orange); color: var(--neon-orange);">LEVEL EDITOR</button>
+            <button onclick="UI.resetProgress()" style="border-color: var(--neon-red); color: var(--neon-red); margin-top: 20px;">RESET PROGRESS</button>
         </div>
     </div>
 
@@ -544,6 +622,40 @@
         </div>
     </div>
 
+    <div id="menu-editor" class="ui-layer hidden">
+        <div class="menu-box">
+            <h2>LEVEL EDITOR</h2>
+            <div class="editor-tools">
+                <div class="editor-tool active" data-type="1" onclick="Editor.selectTool(1)">
+                    <div class="editor-preview" style="background: hsl(200, 80%, 60%);">■</div>
+                </div>
+                <div class="editor-tool" data-type="2" onclick="Editor.selectTool(2)">
+                    <div class="editor-preview" style="color: #ff3333;">▲</div>
+                </div>
+                <div class="editor-tool" data-type="3" onclick="Editor.selectTool(3)">
+                    <div class="editor-preview" style="color: #ffff00;">●</div>
+                </div>
+                <div class="editor-tool" data-type="7" onclick="Editor.selectTool(7)">
+                    <div class="editor-preview" style="color: #00ffff;">⬆️</div>
+                </div>
+                <div class="editor-tool" data-type="15" onclick="Editor.selectTool(15)">
+                    <div class="editor-preview" style="color: #ff0000;">⚡</div>
+                </div>
+                <div class="editor-tool" data-type="99" onclick="Editor.selectTool(99)">
+                    <div class="editor-preview" style="color: #00ff00;">🏁</div>
+                </div>
+            </div>
+            <div style="margin: 20px 0;">
+                <button onclick="Editor.playTest()">PLAY TEST</button>
+                <button onclick="Editor.exportLevel()">EXPORT LEVEL</button>
+                <button onclick="Editor.importLevel()">IMPORT LEVEL</button>
+                <button onclick="Editor.clearLevel()">CLEAR</button>
+            </div>
+            <div id="editor-status" style="color: var(--neon-green); margin: 10px 0;"></div>
+            <button onclick="UI.home()">BACK TO MENU</button>
+        </div>
+    </div>
+
     <div id="game-container">
         <div id="mobile-controls">
             <button class="mobile-btn" 
@@ -559,11 +671,11 @@
 const CFG = {
     tile: 50,
     spd: 8.5,
-    jmp: 27, // Increased jump height
+    jmp: 27,
     g: 0.9,
     term: 20,
     START_X: 6,
-    maxHeight: -400, // 8 blocks high (8 * 50 = 400)
+    maxHeight: -400,
     PAD_JUMP: 80,
     DASH_DIST: 200,
     DASH_COLOR: '#ff0000',
@@ -573,8 +685,8 @@ const CFG = {
     MACRO_SCALE: 1.0,
     TOTAL_LEVELS: 50,
     LEVELS_PER_PAGE: 10,
-    SPIKE_HEIGHT: 8, // 8 block height limit
-    FLYING_SPIKE_ZONE: 8 * 50, // 8 blocks in pixels
+    SPIKE_HEIGHT: 8,
+    FLYING_SPIKE_ZONE: 8 * 50,
     GRAVITY_BLOCK_HEIGHT: 150
 };
 
@@ -599,7 +711,7 @@ const SKINS = [
     { name: 'Lava', main: '#ff4d00', secondary: '#ffff00', cost: 100 },
     { name: 'Royal Purple', main: '#d000ff', secondary: '#ff00d0', cost: 150 },
     { name: 'Dark Ops', main: '#333333', secondary: '#ffffff', cost: 200 },
-    { name: 'Special Limited', main: '#ff00ff', secondary: '#00ffff', cost: 400 }
+    { name: 'Season 1 Skin', main: '#ff00ff', secondary: '#00ffff', cost: 400 }
 ];
 
 // --- AUDIO ENGINE ---
@@ -668,11 +780,11 @@ const AUDIO = {
     checkpoint: () => AUDIO.playTone(1200, 'sine', 0.15, 0.4),
 };
 
-// --- LEVEL DATA (COMPLETELY REDESIGNED WITH OBSTACLES THROUGHOUT) ---
+// --- LEVEL DATA (ALL UNIQUE LEVELS) ---
 const L = (t, x, y) => ({ t: t, x: x, y: y });
 
 const createLevel = (id, objects) => {
-    objects.push(L(99, 250, 0)); // Extended goal position
+    objects.push(L(99, 250, 0));
     return objects;
 }
 
@@ -692,147 +804,121 @@ const LEVELS = [
         L(3,212,0), L(3,220,0), L(3,228,0), L(3,236,0), L(3,244,0)
     ]),
 
-    // Level 1: CUBE - 4 BLOCK GAPS with obstacles throughout
+    // Level 1: CUBE - Advanced Platforming
     createLevel(1, [
-        L(1,10,0), L(1,14,0), L(1,18,0), L(1,22,0), L (1,20,0),
-        L(1,26,0), L(1,30,0), L(1,34,0), L(1,38,0),
-        L(1,42,0), L(1,46,0), L(1,50,0), L(1,54,0),
-        L(1,58,0), L(1,62,0), L(1,66,0), L(1,70,0),
-        L(1,74,0), L(1,78,0), L(1,82,0), L(1,86,0),
-        L(1,90,0), L(1,94,0), L(1,98,0), L(1,102,0),
-        L(1,106,0), L(1,110,0), L(1,114,0), L(1,118,0),
-        L(1,122,0), L(1,126,0), L(1,130,0), L(1,134,0),
-        L(1,138,0), L(1,142,0), L(1,146,0), L(1,150,0),
-        L(1,154,0), L(1,158,0), L(1,162,0), L(1,166,0),
-        L(1,170,0), L(1,174,0), L(1,178,0), L(1,182,0),
-        L(1,186,0), L(1,190,0), L(1,194,0), L(1,198,0),
-        L(1,202,0), L(1,206,0), L(1,210,0), L(1,214,0),
-        L(1,218,0), L(1,222,0), L(1,226,0), L(1,230,0),
-        L(1,234,0), L(1,238,0), L(1,242,0), L(1,246,0),
-        // 4-block gaps created by removing blocks
-        L(3,12,0), L(3,20,0), L(3,28,0), L(3,36,0), L(3,44,0), L(3,52,0), L(3,60,0), L(3,68,0),
-        L(3,76,0), L(3,84,0), L(3,92,0), L(3,100,0), L(3,108,0), L(3,116,0), L(3,124,0), L(3,132,0),
-        L(3,140,0), L(3,148,0), L(3,156,0), L(3,164,0), L(3,172,0), L(3,180,0), L(3,188,0), L(3,196,0),
-        L(3,204,0), L(3,212,0), L(3,220,0), L(3,228,0), L(3,236,0), L(3,244,0),
-        // Additional obstacles throughout
-        L(2,15,0), L(2,25,0), L(2,35,0), L(2,45,0), L(2,55,0), L(2,65,0), L(2,75,0), L(2,85,0),
-        L(2,95,0), L(2,105,0), L(2,115,0), L(2,125,0), L(2,135,0), L(2,145,0), L(2,155,0), L(2,165,0),
-        L(2,175,0), L(2,185,0), L(2,195,0), L(2,205,0), L(2,215,0), L(2,225,0), L(2,235,0), L(2,245,0)
+        L(1,10,0), L(1,15,1), L(1,20,2), L(1,25,1), L(1,30,0), L(2,35,0), L(1,40,0), L(1,45,1), L(1,50,2),
+        L(1,55,3), L(1,60,2), L(1,65,1), L(1,70,0), L(7,75,0), L(1,80,0), L(2,85,0), L(1,90,1), L(1,95,2),
+        L(1,100,3), L(1,105,4), L(1,110,3), L(1,115,2), L(1,120,1), L(1,125,0), L(7,130,0), L(1,135,0),
+        L(2,140,0), L(1,145,1), L(1,150,2), L(1,155,3), L(1,160,4), L(1,165,5), L(1,170,4), L(1,175,3),
+        L(1,180,2), L(1,185,1), L(1,190,0), L(7,195,0), L(1,200,0), L(2,205,0), L(1,210,0), L(1,215,0),
+        L(1,220,0), L(1,225,0), L(1,230,0), L(1,235,0), L(1,240,0), L(1,245,0),
+        L(3,12,0), L(3,25,1), L(3,38,2), L(3,51,3), L(3,64,2), L(3,77,1), L(3,90,0), L(3,103,1),
+        L(3,116,2), L(3,129,3), L(3,142,4), L(3,155,3), L(3,168,2), L(3,181,1), L(3,194,0), L(3,207,0),
+        L(3,220,0), L(3,233,0), L(3,246,0)
     ]),
 
-    // Level 2: SHIP - Flying Chaos with obstacles throughout
+    // Level 2: SHIP - Vertical Challenge
     createLevel(2, [
-        L(4,10,2), 
-        L(2,15,0), L(2,20,0), L(2,25,0), L(2,30,0), L(2,35,0), L(2,40,0), L(2,45,0), L(2,50,0),
-        L(2,15,8), L(2,20,8), L(2,25,8), L(2,30,8), L(2,35,8), L(2,40,8), L(2,45,8), L(2,50,8),
-        L(1,55,0), L(1,55,4), L(2,60,1), L(2,60,3), L(1,65,0), L(1,65,4), L(2,70,1), L(2,70,3),
-        L(1,75,0), L(1,75,4), L(2,80,1), L(2,80,3), L(1,85,0), L(1,85,4), L(2,90,1), L(2,90,3),
-        L(1,95,0), L(1,95,4), L(2,100,1), L(2,100,3), L(1,105,0), L(1,105,4), L(2,110,1), L(2,110,3),
-        L(1,115,0), L(1,115,4), L(2,120,1), L(2,120,3), L(1,125,0), L(1,125,4), L(2,130,1), L(2,130,3),
-        L(1,135,0), L(1,135,4), L(2,140,1), L(2,140,3), L(1,145,0), L(1,145,4), L(2,150,1), L(2,150,3),
-        L(1,155,0), L(1,155,4), L(2,160,1), L(2,160,3), L(1,165,0), L(1,165,4), L(2,170,1), L(2,170,3),
-        L(1,175,0), L(1,175,4), L(2,180,1), L(2,180,3), L(1,185,0), L(1,185,4), L(2,190,1), L(2,190,3),
-        L(1,195,0), L(1,195,4), L(2,200,1), L(2,200,3), L(1,205,0), L(1,205,4), L(2,210,1), L(2,210,3),
-        L(1,215,0), L(1,215,4), L(2,220,1), L(2,220,3), L(1,225,0), L(1,225,4), L(2,230,1), L(2,230,3),
-        L(1,235,0), L(1,235,4), L(2,240,1), L(2,240,3), L(1,245,0), L(1,245,4),
-        L(3,12,2), L(3,22,2), L(3,32,2), L(3,42,2), L(3,52,2), L(3,62,2), L(3,72,2), L(3,82,2),
-        L(3,92,2), L(3,102,2), L(3,112,2), L(3,122,2), L(3,132,2), L(3,142,2), L(3,152,2), L(3,162,2),
-        L(3,172,2), L(3,182,2), L(3,192,2), L(3,202,2), L(3,212,2), L(3,222,2), L(3,232,2), L(3,242,2)
+        L(4,10,2),
+        L(1,15,0), L(1,15,8), L(1,20,1), L(1,20,7), L(1,25,2), L(1,25,6), L(1,30,3), L(1,30,5),
+        L(1,35,4), L(1,40,3), L(1,40,5), L(1,45,2), L(1,45,6), L(1,50,1), L(1,50,7), L(1,55,0), L(1,55,8),
+        L(2,60,2), L(2,60,6), L(1,65,0), L(1,65,8), L(1,70,1), L(1,70,7), L(1,75,2), L(1,75,6),
+        L(1,80,3), L(1,80,5), L(1,85,4), L(1,90,3), L(1,90,5), L(1,95,2), L(1,95,6), L(1,100,1), L(1,100,7),
+        L(1,105,0), L(1,105,8), L(2,110,2), L(2,110,6), L(1,115,0), L(1,115,8), L(1,120,1), L(1,120,7),
+        L(1,125,2), L(1,125,6), L(1,130,3), L(1,130,5), L(1,135,4), L(1,140,3), L(1,140,5), L(1,145,2),
+        L(1,145,6), L(1,150,1), L(1,150,7), L(1,155,0), L(1,155,8), L(2,160,2), L(2,160,6), L(1,165,0),
+        L(1,165,8), L(1,170,1), L(1,170,7), L(1,175,2), L(1,175,6), L(1,180,3), L(1,180,5), L(1,185,4),
+        L(1,190,3), L(1,190,5), L(1,195,2), L(1,195,6), L(1,200,1), L(1,200,7), L(1,205,0), L(1,205,8),
+        L(2,210,2), L(2,210,6), L(1,215,0), L(1,215,8), L(1,220,1), L(1,220,7), L(1,225,2), L(1,225,6),
+        L(1,230,3), L(1,230,5), L(1,235,4), L(1,240,3), L(1,240,5), L(1,245,2), L(1,245,6)
     ]),
 
-    // Level 3: UFO - Precision Madness with obstacles throughout
+    // Level 3: UFO - Precision Maze
     createLevel(3, [
-        L(5,10,2), L(16,14,2), L(1,18,0), L(1,20,0), L(1,22,0), L(1,26,2), L(1,28,2), L(1,30,2), L(16,34,2),
-        L(1,38,0), L(1,40,0), L(1,42,0), L(1,46,2), L(1,48,2), L(1,50,2), L(16,54,2), L(1,58,0), L(1,60,0),
-        L(1,62,0), L(1,66,2), L(1,68,2), L(1,70,2), L(16,74,2), L(1,78,0), L(1,80,0), L(1,82,0), L(1,86,2),
-        L(1,88,2), L(1,90,2), L(16,94,2), L(1,98,0), L(1,100,0), L(1,102,0), L(1,106,2), L(1,108,2), L(1,110,2),
-        L(16,114,2), L(1,118,0), L(1,120,0), L(1,122,0), L(1,126,2), L(1,128,2), L(1,130,2), L(16,134,2),
-        L(1,138,0), L(1,140,0), L(1,142,0), L(1,146,2), L(1,148,2), L(1,150,2), L(16,154,2), L(1,158,0),
-        L(1,160,0), L(1,162,0), L(1,166,2), L(1,168,2), L(1,170,2), L(16,174,2), L(1,178,0), L(1,180,0),
-        L(1,182,0), L(1,186,2), L(1,188,2), L(1,190,2), L(16,194,2), L(1,198,0), L(1,200,0), L(1,202,0),
-        L(1,206,2), L(1,208,2), L(1,210,2), L(16,214,2), L(1,218,0), L(1,220,0), L(1,222,0), L(1,226,2),
-        L(1,228,2), L(1,230,2), L(16,234,2), L(1,238,0), L(1,240,0), L(1,242,0), L(1,246,2), L(1,248,2),
-        L(3,13,2), L(3,21,2), L(3,29,2), L(3,37,2), L(3,45,2), L(3,53,2), L(3,61,2), L(3,69,2),
-        L(3,77,2), L(3,85,2), L(3,93,2), L(3,101,2), L(3,109,2), L(3,117,2), L(3,125,2), L(3,133,2),
-        L(3,141,2), L(3,149,2), L(3,157,2), L(3,165,2), L(3,173,2), L(3,181,2), L(3,189,2), L(3,197,2),
-        L(3,205,2), L(3,213,2), L(3,221,2), L(3,229,2), L(3,237,2), L(3,245,2)
+        L(5,10,2),
+        L(1,15,0), L(1,15,4), L(1,20,1), L(1,20,3), L(1,25,2), L(2,30,0), L(2,30,4),
+        L(1,35,0), L(1,35,4), L(1,40,1), L(1,40,3), L(1,45,2), L(2,50,0), L(2,50,4),
+        L(1,55,0), L(1,55,4), L(1,60,1), L(1,60,3), L(1,65,2), L(2,70,0), L(2,70,4),
+        L(1,75,0), L(1,75,4), L(1,80,1), L(1,80,3), L(1,85,2), L(2,90,0), L(2,90,4),
+        L(1,95,0), L(1,95,4), L(1,100,1), L(1,100,3), L(1,105,2), L(2,110,0), L(2,110,4),
+        L(1,115,0), L(1,115,4), L(1,120,1), L(1,120,3), L(1,125,2), L(2,130,0), L(2,130,4),
+        L(1,135,0), L(1,135,4), L(1,140,1), L(1,140,3), L(1,145,2), L(2,150,0), L(2,150,4),
+        L(1,155,0), L(1,155,4), L(1,160,1), L(1,160,3), L(1,165,2), L(2,170,0), L(2,170,4),
+        L(1,175,0), L(1,175,4), L(1,180,1), L(1,180,3), L(1,185,2), L(2,190,0), L(2,190,4),
+        L(1,195,0), L(1,195,4), L(1,200,1), L(1,200,3), L(1,205,2), L(2,210,0), L(2,210,4),
+        L(1,215,0), L(1,215,4), L(1,220,1), L(1,220,3), L(1,225,2), L(2,230,0), L(2,230,4),
+        L(1,235,0), L(1,235,4), L(1,240,1), L(1,240,3), L(1,245,2)
     ]),
 
-    // Level 4: WAVE - Extreme Waves with obstacles throughout
+    // Level 4: WAVE - Extreme Waves
     createLevel(4, [
         L(11,10,2),
-        L(2,15,0), L(2,20,0), L(2,25,0), L(2,30,0), L(2,35,0), L(2,40,0), L(2,45,0), L(2,50,0),
-        L(2,15,8), L(2,20,8), L(2,25,8), L(2,30,8), L(2,35,8), L(2,40,8), L(2,45,8), L(2,50,8),
-        L(2,55,1), L(2,55,3), L(1,60,0), L(1,60,4), L(2,65,1), L(2,65,3), L(1,70,0), L(1,70,4),
-        L(2,75,1), L(2,75,3), L(1,80,0), L(1,80,4), L(2,85,1), L(2,85,3), L(1,90,0), L(1,90,4),
-        L(2,95,1), L(2,95,3), L(1,100,0), L(1,100,4), L(2,105,1), L(2,105,3), L(1,110,0), L(1,110,4),
-        L(2,115,1), L(2,115,3), L(1,120,0), L(1,120,4), L(2,125,1), L(2,125,3), L(1,130,0), L(1,130,4),
-        L(2,135,1), L(2,135,3), L(1,140,0), L(1,140,4), L(2,145,1), L(2,145,3), L(1,150,0), L(1,150,4),
-        L(2,155,1), L(2,155,3), L(1,160,0), L(1,160,4), L(2,165,1), L(2,165,3), L(1,170,0), L(1,170,4),
-        L(2,175,1), L(2,175,3), L(1,180,0), L(1,180,4), L(2,185,1), L(2,185,3), L(1,190,0), L(1,190,4),
-        L(2,195,1), L(2,195,3), L(1,200,0), L(1,200,4), L(2,205,1), L(2,205,3), L(1,210,0), L(1,210,4),
-        L(2,215,1), L(2,215,3), L(1,220,0), L(1,220,4), L(2,225,1), L(2,225,3), L(1,230,0), L(1,230,4),
-        L(2,235,1), L(2,235,3), L(1,240,0), L(1,240,4), L(2,245,1), L(2,245,3),
-        L(3,12,2), L(3,22,2), L(3,32,2), L(3,42,2), L(3,52,2), L(3,62,2), L(3,72,2), L(3,82,2),
-        L(3,92,2), L(3,102,2), L(3,112,2), L(3,122,2), L(3,132,2), L(3,142,2), L(3,152,2), L(3,162,2),
-        L(3,172,2), L(3,182,2), L(3,192,2), L(3,202,2), L(3,212,2), L(3,222,2), L(3,232,2), L(3,242,2)
+        L(1,15,0), L(1,15,8), L(1,20,1), L(1,20,7), L(1,25,2), L(1,25,6), L(1,30,3), L(1,30,5),
+        L(1,35,4), L(1,40,3), L(1,40,5), L(1,45,2), L(1,45,6), L(1,50,1), L(1,50,7), L(1,55,0), L(1,55,8),
+        L(2,60,2), L(2,60,6), L(1,65,0), L(1,65,8), L(1,70,1), L(1,70,7), L(1,75,2), L(1,75,6),
+        L(1,80,3), L(1,80,5), L(1,85,4), L(1,90,3), L(1,90,5), L(1,95,2), L(1,95,6), L(1,100,1), L(1,100,7),
+        L(1,105,0), L(1,105,8), L(2,110,2), L(2,110,6), L(1,115,0), L(1,115,8), L(1,120,1), L(1,120,7),
+        L(1,125,2), L(1,125,6), L(1,130,3), L(1,130,5), L(1,135,4), L(1,140,3), L(1,140,5), L(1,145,2),
+        L(1,145,6), L(1,150,1), L(1,150,7), L(1,155,0), L(1,155,8), L(2,160,2), L(2,160,6), L(1,165,0),
+        L(1,165,8), L(1,170,1), L(1,170,7), L(1,175,2), L(1,175,6), L(1,180,3), L(1,180,5), L(1,185,4),
+        L(1,190,3), L(1,190,5), L(1,195,2), L(1,195,6), L(1,200,1), L(1,200,7), L(1,205,0), L(1,205,8),
+        L(2,210,2), L(2,210,6), L(1,215,0), L(1,215,8), L(1,220,1), L(1,220,7), L(1,225,2), L(1,225,6),
+        L(1,230,3), L(1,230,5), L(1,235,4), L(1,240,3), L(1,240,5), L(1,245,2), L(1,245,6)
     ]),
 
-    // Level 5: ROBOT/MINI - Tiny Jumps with obstacles throughout
+    // Level 5: ROBOT - Mini Jumps
     createLevel(5, [
-        L(12,10,0), L(9,14,2), L(1,18,0), L(1,22,2), L(1,26,0), L(1,30,2), L(1,34,0), L(1,38,2), L(1,42,0),
-        L(1,46,2), L(1,50,0), L(1,54,2), L(1,58,0), L(1,62,2), L(1,66,0), L(1,70,2), L(1,74,0), L(1,78,2),
-        L(1,82,0), L(1,86,2), L(1,90,0), L(1,94,2), L(1,98,0), L(1,102,2), L(1,106,0), L(1,110,2), L(1,114,0),
-        L(1,118,2), L(1,122,0), L(1,126,2), L(1,130,0), L(1,134,2), L(1,138,0), L(1,142,2), L(1,146,0),
-        L(1,150,2), L(1,154,0), L(1,158,2), L(1,162,0), L(1,166,2), L(1,170,0), L(1,174,2), L(1,178,0),
-        L(1,182,2), L(1,186,0), L(1,190,2), L(1,194,0), L(1,198,2), L(1,202,0), L(1,206,2), L(1,210,0),
-        L(1,214,2), L(1,218,0), L(1,222,2), L(1,226,0), L(1,230,2), L(1,234,0), L(1,238,2), L(1,242,0),
-        L(1,246,2),
-        L(3,13,0), L(3,21,0), L(3,29,0), L(3,37,0), L(3,45,0), L(3,53,0), L(3,61,0), L(3,69,0),
-        L(3,77,0), L(3,85,0), L(3,93,0), L(3,101,0), L(3,109,0), L(3,117,0), L(3,125,0), L(3,133,0),
-        L(3,141,0), L(3,149,0), L(3,157,0), L(3,165,0), L(3,173,0), L(3,181,0), L(3,189,0), L(3,197,0),
-        L(3,205,0), L(3,213,0), L(3,221,0), L(3,229,0), L(3,237,0), L(3,245,0)
+        L(12,10,0), L(9,14,2),
+        L(1,18,0), L(1,22,0), L(1,26,0), L(1,30,0), L(1,34,0), L(1,38,0), L(1,42,0), L(1,46,0),
+        L(1,50,0), L(1,54,0), L(1,58,0), L(1,62,0), L(1,66,0), L(1,70,0), L(1,74,0), L(1,78,0),
+        L(1,82,0), L(1,86,0), L(1,90,0), L(1,94,0), L(1,98,0), L(1,102,0), L(1,106,0), L(1,110,0),
+        L(1,114,0), L(1,118,0), L(1,122,0), L(1,126,0), L(1,130,0), L(1,134,0), L(1,138,0), L(1,142,0),
+        L(1,146,0), L(1,150,0), L(1,154,0), L(1,158,0), L(1,162,0), L(1,166,0), L(1,170,0), L(1,174,0),
+        L(1,178,0), L(1,182,0), L(1,186,0), L(1,190,0), L(1,194,0), L(1,198,0), L(1,202,0), L(1,206,0),
+        L(1,210,0), L(1,214,0), L(1,218,0), L(1,222,0), L(1,226,0), L(1,230,0), L(1,234,0), L(1,238,0),
+        L(1,242,0), L(1,246,0),
+        L(2,20,0), L(2,40,0), L(2,60,0), L(2,80,0), L(2,100,0), L(2,120,0), L(2,140,0), L(2,160,0),
+        L(2,180,0), L(2,200,0), L(2,220,0), L(2,240,0),
+        L(3,15,0), L(3,35,0), L(3,55,0), L(3,75,0), L(3,95,0), L(3,115,0), L(3,135,0), L(3,155,0),
+        L(3,175,0), L(3,195,0), L(3,215,0), L(3,235,0), L(3,255,0)
     ]),
 
-    // Level 6: SWING/MACRO - Giant Swings with obstacles throughout
+    // Level 6: SWING - Giant Swings
     createLevel(6, [
-        L(14,10,2), L(10,14,2), L(1,18,0), L(1,18,4), L(1,22,2), L(1,22,6), L(1,26,0), L(1,26,4),
-        L(1,30,2), L(1,30,6), L(1,34,0), L(1,34,4), L(1,38,2), L(1,38,6), L(1,42,0), L(1,42,4),
-        L(1,46,2), L(1,46,6), L(1,50,0), L(1,50,4), L(1,54,2), L(1,54,6), L(1,58,0), L(1,58,4),
-        L(1,62,2), L(1,62,6), L(1,66,0), L(1,66,4), L(1,70,2), L(1,70,6), L(1,74,0), L(1,74,4),
-        L(1,78,2), L(1,78,6), L(1,82,0), L(1,82,4), L(1,86,2), L(1,86,6), L(1,90,0), L(1,90,4),
-        L(1,94,2), L(1,94,6), L(1,98,0), L(1,98,4), L(1,102,2), L(1,102,6), L(1,106,0), L(1,106,4),
-        L(1,110,2), L(1,110,6), L(1,114,0), L(1,114,4), L(1,118,2), L(1,118,6), L(1,122,0), L(1,122,4),
-        L(1,126,2), L(1,126,6), L(1,130,0), L(1,130,4), L(1,134,2), L(1,134,6), L(1,138,0), L(1,138,4),
-        L(1,142,2), L(1,142,6), L(1,146,0), L(1,146,4), L(1,150,2), L(1,150,6), L(1,154,0), L(1,154,4),
-        L(1,158,2), L(1,158,6), L(1,162,0), L(1,162,4), L(1,166,2), L(1,166,6), L(1,170,0), L(1,170,4),
-        L(1,174,2), L(1,174,6), L(1,178,0), L(1,178,4), L(1,182,2), L(1,182,6), L(1,186,0), L(1,186,4),
-        L(1,190,2), L(1,190,6), L(1,194,0), L(1,194,4), L(1,198,2), L(1,198,6), L(1,202,0), L(1,202,4),
-        L(1,206,2), L(1,206,6), L(1,210,0), L(1,210,4), L(1,214,2), L(1,214,6), L(1,218,0), L(1,218,4),
-        L(1,222,2), L(1,222,6), L(1,226,0), L(1,226,4), L(1,230,2), L(1,230,6), L(1,234,0), L(1,234,4),
-        L(1,238,2), L(1,238,6), L(1,242,0), L(1,242,4), L(1,246,2), L(1,246,6),
-        L(3,12,2), L(3,20,2), L(3,28,2), L(3,36,2), L(3,44,2), L(3,52,2), L(3,60,2), L(3,68,2),
-        L(3,76,2), L(3,84,2), L(3,92,2), L(3,100,2), L(3,108,2), L(3,116,2), L(3,124,2), L(3,132,2),
-        L(3,140,2), L(3,148,2), L(3,156,2), L(3,164,2), L(3,172,2), L(3,180,2), L(3,188,2), L(3,196,2),
-        L(3,204,2), L(3,212,2), L(3,220,2), L(3,228,2), L(3,236,2), L(3,244,2)
+        L(14,10,2), L(10,14,2),
+        L(1,18,0), L(1,18,4), L(1,22,2), L(1,22,6), L(1,26,0), L(1,26,4), L(1,30,2), L(1,30,6),
+        L(1,34,0), L(1,34,4), L(1,38,2), L(1,38,6), L(1,42,0), L(1,42,4), L(1,46,2), L(1,46,6),
+        L(1,50,0), L(1,50,4), L(1,54,2), L(1,54,6), L(1,58,0), L(1,58,4), L(1,62,2), L(1,62,6),
+        L(1,66,0), L(1,66,4), L(1,70,2), L(1,70,6), L(1,74,0), L(1,74,4), L(1,78,2), L(1,78,6),
+        L(1,82,0), L(1,82,4), L(1,86,2), L(1,86,6), L(1,90,0), L(1,90,4), L(1,94,2), L(1,94,6),
+        L(1,98,0), L(1,98,4), L(1,102,2), L(1,102,6), L(1,106,0), L(1,106,4), L(1,110,2), L(1,110,6),
+        L(1,114,0), L(1,114,4), L(1,118,2), L(1,118,6), L(1,122,0), L(1,122,4), L(1,126,2), L(1,126,6),
+        L(1,130,0), L(1,130,4), L(1,134,2), L(1,134,6), L(1,138,0), L(1,138,4), L(1,142,2), L(1,142,6),
+        L(1,146,0), L(1,146,4), L(1,150,2), L(1,150,6), L(1,154,0), L(1,154,4), L(1,158,2), L(1,158,6),
+        L(1,162,0), L(1,162,4), L(1,166,2), L(1,166,6), L(1,170,0), L(1,170,4), L(1,174,2), L(1,174,6),
+        L(1,178,0), L(1,178,4), L(1,182,2), L(1,182,6), L(1,186,0), L(1,186,4), L(1,190,2), L(1,190,6),
+        L(1,194,0), L(1,194,4), L(1,198,2), L(1,198,6), L(1,202,0), L(1,202,4), L(1,206,2), L(1,206,6),
+        L(1,210,0), L(1,210,4), L(1,214,2), L(1,214,6), L(1,218,0), L(1,218,4), L(1,222,2), L(1,222,6),
+        L(1,226,0), L(1,226,4), L(1,230,2), L(1,230,6), L(1,234,0), L(1,234,4), L(1,238,2), L(1,238,6),
+        L(1,242,0), L(1,242,4), L(1,246,2), L(1,246,6)
     ]),
 
-    // Level 7: LASER MAZE - Crazy new level with moving obstacles throughout
+    // Level 7: LASER MAZE
     createLevel(7, [
         L(1,10,0), L(1,14,0), L(1,18,0), L(1,22,0),
-        L(20,26,2), L(20,30,4), L(20,34,2), L(20,38,4), // Moving platforms
+        L(20,26,2), L(20,30,4), L(20,34,2), L(20,38,4),
         L(2,42,0), L(2,46,0), L(2,50,0), L(2,54,0),
         L(15,58,2), L(1,62,0), L(1,66,0), L(15,70,2),
         L(2,74,0), L(2,78,0), L(2,82,0), L(2,86,0),
-        L(7,90,0), L(7,94,0), L(7,98,0), L(7,102,0), // Jump pads
+        L(7,90,0), L(7,94,0), L(7,98,0), L(7,102,0),
         L(1,106,0), L(1,110,0), L(1,114,0), L(1,118,0),
-        L(20,122,2), L(20,126,4), L(20,130,2), L(20,134,4), // More moving platforms
+        L(20,122,2), L(20,126,4), L(20,130,2), L(20,134,4),
         L(2,138,0), L(2,142,0), L(2,146,0), L(2,150,0),
         L(15,154,2), L(1,158,0), L(1,162,0), L(15,166,2),
         L(2,170,0), L(2,174,0), L(2,178,0), L(2,182,0),
-        L(7,186,0), L(7,190,0), L(7,194,0), L(7,198,0), // More jump pads
+        L(7,186,0), L(7,190,0), L(7,194,0), L(7,198,0),
         L(1,202,0), L(1,206,0), L(1,210,0), L(1,214,0),
-        L(20,218,2), L(20,222,4), L(20,226,2), L(20,230,4), // Even more moving platforms
+        L(20,218,2), L(20,222,4), L(20,226,2), L(20,230,4),
         L(2,234,0), L(2,238,0), L(2,242,0), L(2,246,0),
         L(3,12,0), L(3,20,0), L(3,28,0), L(3,36,0), L(3,44,0), L(3,52,0), L(3,60,0), L(3,68,0),
         L(3,76,0), L(3,84,0), L(3,92,0), L(3,100,0), L(3,108,0), L(3,116,0), L(3,124,0), L(3,132,0),
@@ -840,7 +926,7 @@ const LEVELS = [
         L(3,204,0), L(3,212,0), L(3,220,0), L(3,228,0), L(3,236,0), L(3,244,0)
     ]),
 
-    // Level 8: SPIRAL OF DOOM - Circular pattern with obstacles throughout
+    // Level 8: SPIRAL OF DOOM
     createLevel(8, [
         L(1,10,0), L(1,15,1), L(1,20,2), L(1,25,3), L(1,30,4), L(1,35,5), L(1,40,6), L(1,45,7),
         L(1,50,6), L(1,55,5), L(1,60,4), L(1,65,3), L(1,70,2), L(1,75,1), L(1,80,0),
@@ -858,7 +944,7 @@ const LEVELS = [
         L(3,232,6), L(3,242,5), L(3,252,4)
     ]),
 
-    // Level 9: BOUNCE HOUSE - All jump pads with obstacles throughout
+    // Level 9: BOUNCE HOUSE
     createLevel(9, [
         L(7,10,0), L(7,14,0), L(7,18,0), L(7,22,0), L(7,26,0), L(7,30,0), L(7,34,0), L(7,38,0),
         L(7,42,0), L(7,46,0), L(7,50,0), L(7,54,0), L(7,58,0), L(7,62,0), L(7,66,0), L(7,70,0),
@@ -874,7 +960,7 @@ const LEVELS = [
         L(3,204,0), L(3,212,0), L(3,220,0), L(3,228,0), L(3,236,0), L(3,244,0)
     ]),
 
-    // Level 10: DASH MANIA - Dash portals everywhere with obstacles throughout
+    // Level 10: DASH MANIA
     createLevel(10, [
         L(1,10,0), L(15,14,2), L(1,18,0), L(15,22,2), L(1,26,0), L(15,30,2), L(1,34,0), L(15,38,2),
         L(1,42,0), L(15,46,2), L(1,50,0), L(15,54,2), L(1,58,0), L(15,62,2), L(1,66,0), L(15,70,2),
@@ -891,371 +977,533 @@ const LEVELS = [
     ])
 ];
 
-// Generate 40 completely unique levels (11-50)
+// Generate 40 completely unique levels (11-50) - ALL UNIQUE NO LOOPS
 for (let i = 11; i <= 50; i++) {
     const levelObjects = [];
     
-    // Each level gets a unique theme and mechanics - NO REPEATS
+    // Each level gets completely unique design
     switch(i) {
-        case 11: // ZIGZAG EXTREME
-            for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(1, x, Math.sin(x/10) * 3 + 2));
-                if(x % 16 === 2) levelObjects.push(L(2, x, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, Math.sin(x/10) * 3 + 2));
+        case 11: // ASCENDING STAIRCASE
+            for(let x = 10, y = 0; x <= 250; x += 8, y++) {
+                levelObjects.push(L(1, x, y % 4));
+                if(x % 24 === 10) levelObjects.push(L(2, x, (y+1) % 4));
+                if(x % 32 === 10) levelObjects.push(L(3, x, y % 4));
             }
             break;
             
-        case 12: // WALL JUMP MADNESS
+        case 12: // DESCENDING PLATFORMS
+            for(let x = 10, y = 3; x <= 250; x += 6, y--) {
+                if(y < 0) y = 3;
+                levelObjects.push(L(1, x, y));
+                if(x % 18 === 10) levelObjects.push(L(7, x, y));
+                if(x % 24 === 10) levelObjects.push(L(3, x, y));
+            }
+            break;
+            
+        case 13: // ZIG ZAG PATH
+            let y13 = 2;
+            let direction13 = 1;
+            for(let x = 10; x <= 250; x += 6) {
+                levelObjects.push(L(1, x, y13));
+                if(x % 12 === 10) {
+                    levelObjects.push(L(2, x, y13 + direction13));
+                    y13 += direction13;
+                    if(y13 >= 4 || y13 <= 0) direction13 *= -1;
+                }
+                if(x % 20 === 10) levelObjects.push(L(3, x, y13));
+            }
+            break;
+            
+        case 14: // ISLAND HOPPING
+            for(let x = 10; x <= 250; x += 12) {
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x+4, 2));
+                levelObjects.push(L(1, x+8, 2));
+                if(x % 24 === 10) levelObjects.push(L(7, x+4, 2));
+                if(x % 36 === 10) levelObjects.push(L(3, x+4, 2));
+            }
+            break;
+            
+        case 15: // WALL JUMP TRAINING
+            for(let x = 10; x <= 250; x += 8) {
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 4));
+                if(x % 16 === 10) levelObjects.push(L(1, x, 2));
+                if(x % 24 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 16: // FLOATING OBSTACLES
+            for(let x = 10; x <= 250; x += 5) {
+                if(x % 15 === 10) levelObjects.push(L(1, x, 0));
+                if(x % 20 === 10) levelObjects.push(L(2, x, 2));
+                if(x % 25 === 10) levelObjects.push(L(3, x, 1));
+            }
+            break;
+            
+        case 17: // NARROW PATH
+            for(let x = 10; x <= 250; x += 4) {
+                levelObjects.push(L(1, x, 1));
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x, 3));
+                if(x % 16 === 10) levelObjects.push(L(2, x, 0));
+                if(x % 16 === 10) levelObjects.push(L(2, x, 4));
+                if(x % 20 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 18: // BOUNCY CORRIDOR
+            for(let x = 10; x <= 250; x += 3) {
+                levelObjects.push(L(7, x, 0));
+                levelObjects.push(L(7, x, 4));
+                if(x % 12 === 10) levelObjects.push(L(1, x, 2));
+                if(x % 18 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 19: // SPIKE FIELD
+            for(let x = 10; x <= 250; x += 4) {
+                if(Math.random() > 0.7) levelObjects.push(L(2, x, 0));
+                if(x % 8 === 10) levelObjects.push(L(1, x, 0));
+                if(x % 16 === 10) levelObjects.push(L(3, x, 0));
+            }
+            break;
+            
+        case 20: // PLATFORM CHAIN
+            for(let x = 10; x <= 250; x += 10) {
+                levelObjects.push(L(1, x, 1));
+                levelObjects.push(L(1, x+2, 2));
+                levelObjects.push(L(1, x+4, 3));
+                levelObjects.push(L(1, x+6, 2));
+                levelObjects.push(L(1, x+8, 1));
+                if(x % 30 === 10) levelObjects.push(L(3, x+4, 3));
+            }
+            break;
+            
+        case 21: // WAVE CHALLENGE
+            for(let x = 10; x <= 250; x += 6) {
+                const waveY = Math.floor(2 + Math.sin(x/15) * 2);
+                levelObjects.push(L(1, x, waveY));
+                if(x % 18 === 10) levelObjects.push(L(2, x, waveY + 1));
+                if(x % 24 === 10) levelObjects.push(L(3, x, waveY));
+            }
+            break;
+            
+        case 22: // TELEPORT MAZE
+            for(let x = 10; x <= 250; x += 8) {
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 4));
+                if(x % 24 === 10) levelObjects.push(L(15, x, 2));
+                if(x % 32 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 23: // VERTICAL GAUNTLET
+            for(let x = 10; x <= 250; x += 12) {
+                for(let y = 0; y <= 4; y++) {
+                    if(y !== 2) levelObjects.push(L(1, x, y));
+                }
+                levelObjects.push(L(2, x, 2));
+                if(x % 36 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 24: // RANDOM OBSTACLES
+            for(let x = 10; x <= 250; x += 5) {
+                if(Math.random() > 0.6) {
+                    levelObjects.push(L(1, x, Math.floor(Math.random() * 3)));
+                }
+                if(Math.random() > 0.8) {
+                    levelObjects.push(L(2, x, Math.floor(Math.random() * 5)));
+                }
+                if(x % 20 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 25: // SYMMETRICAL PATTERN
+            for(let x = 10; x <= 125; x += 6) {
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, 250-x, 2));
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, 250-x, 0));
+                levelObjects.push(L(1, x, 4));
+                levelObjects.push(L(1, 250-x, 4));
+                if(x % 18 === 10) levelObjects.push(L(3, x, 2));
+                if(x % 18 === 10) levelObjects.push(L(3, 250-x, 2));
+            }
+            break;
+            
+        case 26: // CIRCULAR ARENA
+            const center26 = 130;
+            for(let angle = 0; angle < 360; angle += 30) {
+                const rad = angle * Math.PI / 180;
+                const x26 = center26 + Math.cos(rad) * 40;
+                const y26 = 2 + Math.sin(rad) * 2;
+                levelObjects.push(L(1, Math.floor(x26/CFG.tile)*CFG.tile, Math.floor(y26)));
+                if(angle % 90 === 0) levelObjects.push(L(3, Math.floor(x26/CFG.tile)*CFG.tile, Math.floor(y26)));
+            }
+            for(let x = 10; x <= 250; x += 20) {
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 4));
+            }
+            break;
+            
+        case 27: // NARROW BRIDGES
+            for(let x = 10; x <= 250; x += 8) {
+                levelObjects.push(L(1, x, 1));
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x, 3));
+                if(x % 24 === 10) levelObjects.push(L(2, x, 0));
+                if(x % 24 === 10) levelObjects.push(L(2, x, 4));
+                if(x % 32 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 28: // FALLING PLATFORMS
+            for(let x = 10; x <= 250; x += 12) {
+                levelObjects.push(L(20, x, 2));
+                levelObjects.push(L(1, x+4, 0));
+                levelObjects.push(L(1, x+8, 0));
+                if(x % 36 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 29: // COLOR ZONES
+            for(let x = 10; x <= 250; x += 15) {
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 1));
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x, 3));
+                levelObjects.push(L(1, x, 4));
+                if(x % 30 === 10) levelObjects.push(L(15, x, 2));
+                if(x % 45 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 30: // MAZE RUNNER
+            // Create a simple maze pattern
+            const maze30 = [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1],
+                [1,0,1,0,0,0,0,0,0,1],
+                [1,0,1,0,1,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ];
+            
+            for(let row = 0; row < maze30.length; row++) {
+                for(let col = 0; col < maze30[row].length; col++) {
+                    if(maze30[row][col] === 1) {
+                        levelObjects.push(L(1, 10 + col * 8, row));
+                    }
+                }
+            }
+            // Add coins in the path
+            levelObjects.push(L(3, 18, 1));
+            levelObjects.push(L(3, 34, 1));
+            levelObjects.push(L(3, 50, 3));
+            levelObjects.push(L(3, 66, 5));
+            break;
+            
+        case 31: // SPEED RUN
+            for(let x = 10; x <= 250; x += 4) {
+                levelObjects.push(L(1, x, 0));
+                if(x % 20 === 10) levelObjects.push(L(7, x, 0));
+                if(x % 40 === 10) levelObjects.push(L(15, x, 2));
+                if(x % 60 === 10) levelObjects.push(L(3, x, 0));
+            }
+            break;
+            
+        case 32: // PRECISION JUMPS
+            for(let x = 10; x <= 250; x += 16) {
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x+8, 2));
+                if(x % 32 === 10) levelObjects.push(L(2, x+4, 2));
+                if(x % 48 === 10) levelObjects.push(L(3, x+4, 2));
+            }
+            break;
+            
+        case 33: // WALL RUN
             for(let x = 10; x <= 250; x += 6) {
                 levelObjects.push(L(1, x, 0));
                 levelObjects.push(L(1, x, 4));
-                if(x % 12 === 0) levelObjects.push(L(7, x, 2));
-                if(x % 15 === 0) levelObjects.push(L(3, x, 2));
+                if(x % 18 === 10) levelObjects.push(L(1, x, 1));
+                if(x % 18 === 10) levelObjects.push(L(1, x, 3));
+                if(x % 24 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 13: // SPIKE TUNNEL
-            for(let x = 10; x <= 250; x += 4) {
-                levelObjects.push(L(2, x, 0));
-                levelObjects.push(L(2, x, 8));
-                if(x % 8 === 0) levelObjects.push(L(1, x, 4));
-                if(x % 12 === 0) levelObjects.push(L(3, x, 4));
-            }
-            break;
-            
-        case 14: // BOUNCY CASTLE 2.0
-            for(let x = 10; x <= 250; x += 3) {
-                levelObjects.push(L(7, x, Math.random() * 6));
-                if(x % 9 === 0) levelObjects.push(L(3, x, Math.random() * 6));
-            }
-            break;
-            
-        case 15: // DASH MASTER
-            for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(15, x, 2));
-                levelObjects.push(L(1, x+5, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 16: // SLOW MOTION ZONE
+        case 34: // BOUNCE CHAIN
             for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(16, x, 2));
-                levelObjects.push(L(1, x+4, 0));
-                levelObjects.push(L(2, x+2, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 2));
+                levelObjects.push(L(7, x, 0));
+                levelObjects.push(L(7, x+4, 4));
+                if(x % 24 === 10) levelObjects.push(L(1, x+2, 2));
+                if(x % 32 === 10) levelObjects.push(L(3, x+2, 2));
             }
             break;
             
-        case 17: // MINI GIANT
-            for(let x = 10; x <= 250; x += 12) {
-                levelObjects.push(L(9, x, 2));
-                levelObjects.push(L(10, x+6, 2));
-                levelObjects.push(L(1, x+3, 0));
-                if(x % 24 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 18: // PORTAL PARTY
-            const portals = [4,5,6,11,12,14];
-            for(let x = 10; x <= 250; x += 8) {
-                const portalType = portals[Math.floor(Math.random() * portals.length)];
-                levelObjects.push(L(portalType, x, 2));
-                levelObjects.push(L(1, x+4, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 19: // MOVING PLATFORM MAYHEM
+        case 35: // SPIRAL STAIRCASE
+            let radius35 = 5;
+            let angle35 = 0;
             for(let x = 10; x <= 250; x += 6) {
-                levelObjects.push(L(20, x, Math.random() * 6));
-                if(x % 12 === 0) levelObjects.push(L(1, x, 0));
-                if(x % 18 === 0) levelObjects.push(L(3, x, Math.random() * 6));
+                const y35 = 2 + Math.sin(angle35) * radius35;
+                levelObjects.push(L(1, x, Math.floor(y35)));
+                angle35 += 0.5;
+                if(x % 24 === 10) levelObjects.push(L(3, x, Math.floor(y35)));
             }
             break;
             
-        case 20: // CHECKPOINT RACE
-            for(let x = 10; x <= 250; x += 15) {
+        case 36: // ALTERNATING PLATFORMS
+            for(let x = 10; x <= 250; x += 6) {
+                if(x % 12 === 10) {
+                    levelObjects.push(L(1, x, 0));
+                    levelObjects.push(L(1, x, 1));
+                } else {
+                    levelObjects.push(L(1, x, 3));
+                    levelObjects.push(L(1, x, 4));
+                }
+                if(x % 24 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 37: // RANDOM VERTICAL
+            for(let x = 10; x <= 250; x += 8) {
+                const height37 = Math.floor(Math.random() * 3) + 1;
+                for(let y = 0; y < height37; y++) {
+                    levelObjects.push(L(1, x, y));
+                }
+                if(x % 32 === 10) levelObjects.push(L(3, x, height37 - 1));
+            }
+            break;
+            
+        case 38: // WAVE OBSTACLES
+            for(let x = 10; x <= 250; x += 4) {
+                const waveY38 = Math.floor(2 + Math.sin(x/10) * 1.5);
+                levelObjects.push(L(1, x, waveY38));
+                if(x % 16 === 10 && Math.sin(x/10) > 0.5) {
+                    levelObjects.push(L(2, x, waveY38 + 1));
+                }
+                if(x % 20 === 10) levelObjects.push(L(3, x, waveY38));
+            }
+            break;
+            
+        case 39: // CHECKPOINT RACE
+            for(let x = 10; x <= 250; x += 20) {
                 levelObjects.push(L(13, x, 2));
                 for(let j = 0; j < 3; j++) {
                     levelObjects.push(L(1, x+j*2, 0));
                 }
-                if(x % 30 === 0) levelObjects.push(L(3, x, 2));
+                if(x % 40 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 21: // WAVE DASH
+        case 40: // MIXED CHALLENGE
             for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(11, x, 2));
-                levelObjects.push(L(15, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
+                // Every 10 units, different obstacle
+                const type40 = [1,2,7,15][x % 4];
+                levelObjects.push(L(type40, x, 2));
+                if(x % 20 === 10) levelObjects.push(L(1, x+5, 0));
+                if(x % 30 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 22: // UFO PRECISION
-            for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(5, x, 2));
-                levelObjects.push(L(2, x+4, 0));
-                levelObjects.push(L(2, x+4, 8));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 23: // ROBOT MINI JUMP
-            for(let x = 10; x <= 250; x += 6) {
-                levelObjects.push(L(12, x, 0));
-                levelObjects.push(L(9, x+3, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 12 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 24: // SWING MACRO
-            for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(14, x, 2));
-                levelObjects.push(L(10, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 25: // GRAVITY SHIFT
-            for(let x = 10; x <= 250; x += 12) {
-                levelObjects.push(L(16, x, 2));
-                levelObjects.push(L(1, x+6, 0));
-                levelObjects.push(L(2, x+3, 0));
-                if(x % 24 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 26: // LASER GRID
+        case 41: // NARROW CORRIDORS
             for(let x = 10; x <= 250; x += 5) {
-                levelObjects.push(L(2, x, 0));
-                levelObjects.push(L(2, x, 8));
-                if(x % 10 === 0) levelObjects.push(L(1, x, 4));
-                if(x % 15 === 0) levelObjects.push(L(3, x, 4));
+                levelObjects.push(L(1, x, 1));
+                levelObjects.push(L(1, x, 2));
+                levelObjects.push(L(1, x, 3));
+                if(x % 15 === 10) levelObjects.push(L(2, x, 0));
+                if(x % 15 === 10) levelObjects.push(L(2, x, 4));
+                if(x % 25 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 27: // BOUNCE MAZE
-            for(let x = 10; x <= 250; x += 4) {
+        case 42: // BOUNCY WALLS
+            for(let x = 10; x <= 250; x += 6) {
                 levelObjects.push(L(7, x, 0));
-                if(x % 8 === 0) levelObjects.push(L(2, x, 0));
-                if(x % 12 === 0) levelObjects.push(L(3, x, 0));
+                levelObjects.push(L(7, x, 4));
+                if(x % 18 === 10) levelObjects.push(L(1, x, 2));
+                if(x % 24 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 28: // DASH RACE
+        case 43: // ASCENDING DASH
+            let y43 = 0;
             for(let x = 10; x <= 250; x += 8) {
+                levelObjects.push(L(1, x, y43));
+                if(x % 24 === 10) {
+                    levelObjects.push(L(15, x, y43 + 1));
+                    y43 = Math.min(3, y43 + 1);
+                }
+                if(x % 32 === 10) levelObjects.push(L(3, x, y43));
+            }
+            break;
+            
+        case 44: // SYMMETRICAL WAVES
+            for(let x = 10; x <= 125; x += 5) {
+                const waveY44 = Math.floor(2 + Math.sin(x/8) * 2);
+                levelObjects.push(L(1, x, waveY44));
+                levelObjects.push(L(1, 250-x, waveY44));
+                if(x % 20 === 10) levelObjects.push(L(3, x, waveY44));
+                if(x % 20 === 10) levelObjects.push(L(3, 250-x, waveY44));
+            }
+            break;
+            
+        case 45: // RANDOM TELEPORT
+            for(let x = 10; x <= 250; x += 12) {
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 4));
+                if(Math.random() > 0.7) levelObjects.push(L(15, x, 2));
+                if(x % 36 === 10) levelObjects.push(L(3, x, 2));
+            }
+            break;
+            
+        case 46: // VERTICAL DASH
+            for(let x = 10; x <= 250; x += 15) {
+                for(let y = 0; y <= 4; y++) {
+                    if(y !== 2) levelObjects.push(L(1, x, y));
+                }
                 levelObjects.push(L(15, x, 2));
-                levelObjects.push(L(1, x+4, 0));
-                levelObjects.push(L(2, x+2, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 2));
+                if(x % 45 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 29: // SLOW MOTION DASH
+        case 47: // BOUNCE DASH COMBO
             for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(16, x, 2));
+                levelObjects.push(L(7, x, 0));
                 levelObjects.push(L(15, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
+                if(x % 30 === 10) levelObjects.push(L(1, x+2, 0));
+                if(x % 40 === 10) levelObjects.push(L(3, x+5, 2));
             }
             break;
             
-        case 30: // MINI WAVE
+        case 48: // MAZE DASH
+            // Simple maze pattern
+            const maze48 = [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,1,0,0,0,0,1],
+                [1,1,1,0,1,0,1,1,0,1],
+                [1,0,0,0,0,0,1,0,0,1],
+                [1,0,1,1,1,1,1,0,1,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ];
+            
+            for(let row = 0; row < maze48.length; row++) {
+                for(let col = 0; col < maze48[row].length; col++) {
+                    if(maze48[row][col] === 1) {
+                        levelObjects.push(L(1, 10 + col * 8, row));
+                    }
+                }
+            }
+            // Add dash portals in the path
+            levelObjects.push(L(15, 18, 1));
+            levelObjects.push(L(15, 50, 3));
+            levelObjects.push(L(15, 82, 5));
+            levelObjects.push(L(3, 90, 5));
+            break;
+            
+        case 49: // FINAL CHALLENGE
+            // Combination of all mechanics
             for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(11, x, 2));
-                levelObjects.push(L(9, x+4, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 2));
+                // Regular platforms
+                levelObjects.push(L(1, x, 0));
+                levelObjects.push(L(1, x, 4));
+                
+                // Various obstacles and powerups
+                if(x % 24 === 10) levelObjects.push(L(2, x, 2));
+                if(x % 32 === 10) levelObjects.push(L(7, x, 2));
+                if(x % 40 === 10) levelObjects.push(L(15, x, 2));
+                if(x % 48 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
             
-        case 31: // UFO WAVE
-            for(let x = 10; x <= 250; x += 9) {
-                levelObjects.push(L(5, x, 2));
-                levelObjects.push(L(11, x+4, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 18 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 32: // ROBOT DASH
-            for(let x = 10; x <= 250; x += 7) {
-                levelObjects.push(L(12, x, 0));
-                levelObjects.push(L(15, x+3, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 14 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 33: // SWING WAVE
-            for(let x = 10; x <= 250; x += 11) {
-                levelObjects.push(L(14, x, 2));
-                levelObjects.push(L(11, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 22 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 34: // GRAVITY DASH
-            for(let x = 10; x <= 250; x += 13) {
-                levelObjects.push(L(16, x, 2));
-                levelObjects.push(L(15, x+6, 2));
-                levelObjects.push(L(1, x+3, 0));
-                if(x % 26 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 35: // LASER DASH
+        case 50: // ULTIMATE TEST
+            // The ultimate challenge - everything
             for(let x = 10; x <= 250; x += 6) {
-                levelObjects.push(L(2, x, 0));
-                levelObjects.push(L(15, x+3, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 12 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 36: // BOUNCE DASH
-            for(let x = 10; x <= 250; x += 5) {
-                levelObjects.push(L(7, x, 0));
-                levelObjects.push(L(15, x+2, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 10 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 37: // MINI SLOW
-            for(let x = 10; x <= 250; x += 9) {
-                levelObjects.push(L(9, x, 2));
-                levelObjects.push(L(16, x+4, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 18 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 38: // UFO SLOW
-            for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(5, x, 2));
-                levelObjects.push(L(16, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 39: // ROBOT SLOW
-            for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(12, x, 0));
-                levelObjects.push(L(16, x+4, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 40: // SWING SLOW
-            for(let x = 10; x <= 250; x += 12) {
-                levelObjects.push(L(14, x, 2));
-                levelObjects.push(L(16, x+6, 2));
-                levelObjects.push(L(1, x+3, 0));
-                if(x % 24 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 41: // GRAVITY WAVE
-            for(let x = 10; x <= 250; x += 11) {
-                levelObjects.push(L(16, x, 2));
-                levelObjects.push(L(11, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 22 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 42: // LASER WAVE
-            for(let x = 10; x <= 250; x += 7) {
-                levelObjects.push(L(2, x, 0));
-                levelObjects.push(L(11, x+3, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 14 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 43: // BOUNCE WAVE
-            for(let x = 10; x <= 250; x += 6) {
-                levelObjects.push(L(7, x, 0));
-                levelObjects.push(L(11, x+3, 2));
-                levelObjects.push(L(1, x+1, 0));
-                if(x % 12 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 44: // MINI UFO
-            for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(9, x, 2));
-                levelObjects.push(L(5, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 45: // UFO ROBOT
-            for(let x = 10; x <= 250; x += 9) {
-                levelObjects.push(L(5, x, 2));
-                levelObjects.push(L(12, x+4, 0));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 18 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 46: // ROBOT SWING
-            for(let x = 10; x <= 250; x += 11) {
-                levelObjects.push(L(12, x, 0));
-                levelObjects.push(L(14, x+5, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 22 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 47: // SWING UFO
-            for(let x = 10; x <= 250; x += 12) {
-                levelObjects.push(L(14, x, 2));
-                levelObjects.push(L(5, x+6, 2));
-                levelObjects.push(L(1, x+3, 0));
-                if(x % 24 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 48: // GRAVITY ROBOT
-            for(let x = 10; x <= 250; x += 10) {
-                levelObjects.push(L(16, x, 2));
-                levelObjects.push(L(12, x+5, 0));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 20 === 0) levelObjects.push(L(3, x, 2));
-            }
-            break;
-            
-        case 49: // LASER UFO
-            for(let x = 10; x <= 250; x += 8) {
-                levelObjects.push(L(2, x, 0));
-                levelObjects.push(L(5, x+4, 2));
-                levelObjects.push(L(1, x+2, 0));
-                if(x % 16 === 0) levelObjects.push(L(3, x, 0));
-            }
-            break;
-            
-        case 50: // ULTIMATE CHALLENGE - Mix of everything
-            for(let x = 10; x <= 250; x += 7) {
-                const types = [1,2,7,9,10,11,12,14,15,16,20];
-                const type = types[Math.floor(Math.random() * types.length)];
-                levelObjects.push(L(type, x, Math.random() * 6));
-                if(x % 14 === 0) levelObjects.push(L(3, x, Math.random() * 6));
+                const pattern = x % 30;
+                if(pattern < 10) {
+                    levelObjects.push(L(1, x, 0));
+                    levelObjects.push(L(1, x, 4));
+                } else if(pattern < 20) {
+                    levelObjects.push(L(2, x, 2));
+                } else {
+                    levelObjects.push(L(7, x, 2));
+                }
+                
+                if(x % 15 === 10) levelObjects.push(L(15, x, 2));
+                if(x % 45 === 10) levelObjects.push(L(3, x, 2));
             }
             break;
     }
     
     LEVELS[i] = createLevel(i, levelObjects);
 }
+
+// --- EFFECTS SYSTEM ---
+const Effects = {
+    particles: [],
+    
+    createParticles: function(x, y, color, count = 5) {
+        for(let i = 0; i < count; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 1,
+                color: color,
+                size: Math.random() * 4 + 2
+            });
+        }
+    },
+    
+    updateParticles: function() {
+        for(let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2;
+            p.life -= 0.02;
+            
+            if(p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    },
+    
+    drawParticles: function(ctx) {
+        ctx.save();
+        this.particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x - Game.camX, p.y + Game.floorY, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.restore();
+    },
+    
+    screenShake: function() {
+        Game.shake = 15;
+        document.body.classList.add('screen-shake');
+        setTimeout(() => {
+            document.body.classList.remove('screen-shake');
+        }, 500);
+    },
+    
+    transition: function(callback) {
+        const overlay = document.getElementById('transition-overlay');
+        overlay.classList.add('active');
+        setTimeout(() => {
+            if(callback) callback();
+            setTimeout(() => {
+                overlay.classList.remove('active');
+            }, 500);
+        }, 500);
+    }
+};
 
 // --- ENGINE ---
 const Game = {
@@ -1331,7 +1579,9 @@ const Game = {
         this.startPos = { x: CFG.START_X * CFG.tile, y: 0, g: CFG.g, mode: 'cube', scale: CFG.MACRO_SCALE };
         this.timeScale = 1.0;
         this.clearSlowTimer(); 
-        this.start(theme[0]); 
+        Effects.transition(() => {
+            this.start(theme[0]);
+        });
     },
 
     start: function(bgmFreq) {
@@ -1403,6 +1653,7 @@ const Game = {
             levelState: JSON.parse(JSON.stringify(this.level)) 
         };
         AUDIO.checkpoint();
+        Effects.createParticles(x, y, '#00ff00', 10);
         this.showTutorialMessage("Checkpoint Saved!", 2000);
     },
 
@@ -1412,6 +1663,8 @@ const Game = {
             AUDIO.win();
             AUDIO.stopBGM();
             this.clearSlowTimer();
+            Effects.createParticles(Player.x, Player.y, '#ffff00', 20);
+            Effects.screenShake();
             
             if (this.currLvlIdx + 2 > unlocked) {
                 unlocked = this.currLvlIdx + 2;
@@ -1444,6 +1697,8 @@ const Game = {
             this.timeScale = 1.0;
             Game.dashActive = false;
             this.clearSlowTimer();
+            Effects.createParticles(Player.x, Player.y, '#ff0000', 15);
+            Effects.screenShake();
             
             AUDIO.die();
             AUDIO.stopBGM();
@@ -1468,6 +1723,7 @@ const Game = {
         Game.timeScale = CFG.SLOW_FACTOR;
         Player.dx = CFG.spd * Game.timeScale;
         AUDIO.slow();
+        Effects.createParticles(Player.x, Player.y, '#00ff00', 8);
         Game.showTutorialMessage("SLOW MOTION!", 1500);
 
         this.slowTimer = setTimeout(() => {
@@ -1673,6 +1929,10 @@ const Game = {
 
         if(this.state !== 'dead') Player.draw(ctx, camY);
 
+        // Draw particles
+        Effects.updateParticles();
+        Effects.drawParticles(ctx);
+
         if(this.state === 'game') {
             let endX = this.goalX;
             let startX = this.currentCheckpoint ? this.currentCheckpoint.x : CFG.START_X * CFG.tile;
@@ -1856,7 +2116,13 @@ const Player = {
             if(r>ol && l<or && b>ot && t<ob) {
                 
                 if(o.t===2) Game.crash();
-                else if(o.t===3) { totalCoins++; AUDIO.coin(); Game.updateCoinDisplay(); Game.level.splice(i, 1); }
+                else if(o.t===3) { 
+                    totalCoins++; 
+                    AUDIO.coin(); 
+                    Effects.createParticles(ox + CFG.tile/2, oy - CFG.tile/2, '#ffff00', 5);
+                    Game.updateCoinDisplay(); 
+                    Game.level.splice(i, 1); 
+                }
                 else if(o.t===7) { 
                     const hitFromAbove = this.g > 0 && Math.abs(b - ot) < 20;
                     const hitFromBelow = this.g < 0 && Math.abs(t - ob) < 20;
@@ -1866,6 +2132,7 @@ const Player = {
                         this.dy = (-CFG.PAD_JUMP * this.scale) * Math.sign(this.g); 
                         this.onGround=false; 
                         AUDIO.pad();
+                        Effects.createParticles(ox + CFG.tile/2, oy - CFG.tile/2, '#00ffff', 8);
                     }
                 }
                 else if(o.t===13) { Game.setCheckpoint(this.x, this.y, this.g, this.mode, this.scale); Game.level.splice(i, 1); }
@@ -1914,6 +2181,7 @@ const Player = {
             this.dy = 0; 
             Game.dashActive = true;
             AUDIO.dash();
+            Effects.createParticles(this.x, this.y, '#ff0000', 12);
             Game.showTutorialMessage("DASH!", 500);
         }
     },
@@ -1925,6 +2193,7 @@ const Player = {
             this.dy = -jumpForce * (this.mode === 'robot' ? 1.5 : 1.0) * Math.sign(this.g);
             this.onGround = false;
             AUDIO.jump();
+            Effects.createParticles(this.x + this.w/2, this.y, Player.mainColor, 3);
         } 
     },
 
@@ -1942,6 +2211,7 @@ const Player = {
         }
         
         AUDIO.pad();
+        Effects.createParticles(this.x + this.w/2, this.y, Player.secondaryColor, 6);
         const msg = document.getElementById('msg');
         let scaleText = this.scale < 1 ? ' (MINI)' : (this.scale > 1 ? ' (MACRO)' : '');
         msg.innerText = m.toUpperCase() + scaleText; 
@@ -1995,6 +2265,144 @@ const Player = {
     }
 };
 
+// --- LEVEL EDITOR ---
+const Editor = {
+    currentTool: 1,
+    levelData: [],
+    isTesting: false,
+    
+    init: function() {
+        this.levelData = [];
+        this.currentTool = 1;
+        this.updateToolSelection();
+    },
+    
+    selectTool: function(toolType) {
+        this.currentTool = toolType;
+        this.updateToolSelection();
+        document.getElementById('editor-status').innerText = `Selected: ${this.getToolName(toolType)}`;
+    },
+    
+    updateToolSelection: function() {
+        document.querySelectorAll('.editor-tool').forEach(tool => {
+            tool.classList.remove('active');
+            if(parseInt(tool.dataset.type) === this.currentTool) {
+                tool.classList.add('active');
+            }
+        });
+    },
+    
+    getToolName: function(toolType) {
+        const names = {
+            1: 'Block',
+            2: 'Spike',
+            3: 'Coin',
+            7: 'Jump Pad',
+            15: 'Dash Portal',
+            99: 'Goal'
+        };
+        return names[toolType] || 'Unknown';
+    },
+    
+    placeBlock: function(x, y) {
+        // Convert screen coordinates to grid coordinates
+        const gridX = Math.floor((x + Game.camX) / CFG.tile);
+        const gridY = Math.floor((Game.floorY - y) / CFG.tile);
+        
+        // Remove existing block at this position
+        this.levelData = this.levelData.filter(block => 
+            !(block.x === gridX && block.y === gridY)
+        );
+        
+        // Add new block
+        if(this.currentTool !== 0) {
+            this.levelData.push(L(this.currentTool, gridX, gridY));
+        }
+        
+        document.getElementById('editor-status').innerText = 
+            `Placed ${this.getToolName(this.currentTool)} at (${gridX}, ${gridY}). Total: ${this.levelData.length} blocks`;
+    },
+    
+    playTest: function() {
+        if(this.levelData.length === 0) {
+            document.getElementById('editor-status').innerText = "Can't test empty level!";
+            return;
+        }
+        
+        // Check if goal exists
+        const hasGoal = this.levelData.some(block => block.t === 99);
+        if(!hasGoal) {
+            document.getElementById('editor-status').innerText = "Add a goal (🏁) to test the level!";
+            return;
+        }
+        
+        this.isTesting = true;
+        Game.level = JSON.parse(JSON.stringify(this.levelData));
+        Game.currentCheckpoint = null;
+        Game.startPos = { x: CFG.START_X * CFG.tile, y: 0, g: CFG.g, mode: 'cube', scale: CFG.MACRO_SCALE };
+        Game.state = 'game';
+        Game.currLvlIdx = -1; // Editor level
+        UI.hide();
+        document.getElementById('hud').style.display = 'block';
+        
+        const goalObject = Game.level.find(o => o.t === 99);
+        Game.goalX = goalObject ? goalObject.x * CFG.tile : 100000;
+    },
+    
+    exportLevel: function() {
+        if(this.levelData.length === 0) {
+            document.getElementById('editor-status').innerText = "No level to export!";
+            return;
+        }
+        
+        const levelJSON = JSON.stringify(this.levelData);
+        const blob = new Blob([levelJSON], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'neon_dash_level.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        document.getElementById('editor-status').innerText = `Level exported! ${this.levelData.length} blocks`;
+    },
+    
+    importLevel: function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if(Array.isArray(importedData)) {
+                            this.levelData = importedData;
+                            document.getElementById('editor-status').innerText = 
+                                `Level imported! ${this.levelData.length} blocks loaded`;
+                        } else {
+                            document.getElementById('editor-status').innerText = "Invalid level file!";
+                        }
+                    } catch(error) {
+                        document.getElementById('editor-status').innerText = "Error reading level file!";
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    },
+    
+    clearLevel: function() {
+        this.levelData = [];
+        document.getElementById('editor-status').innerText = "Level cleared!";
+    }
+};
+
 // --- UI ---
 const UI = {
     hide: () => document.querySelectorAll('.ui-layer').forEach(e => e.classList.replace('visible','hidden')),
@@ -2012,11 +2420,15 @@ const UI = {
         Game.checkMobileControls();
         AUDIO.stopBGM();
         Game.clearSlowTimer(); 
-        UI.show('menu-main');
+        Effects.transition(() => {
+            UI.show('menu-main');
+        });
     },
     
     startPlay: () => { 
-        UI.showLevels();
+        Effects.transition(() => {
+            UI.showLevels();
+        });
     },
     
     changeLevelPage: (direction) => {
@@ -2127,6 +2539,34 @@ const UI = {
     showShop: function() {
         UI.renderShop();
         UI.show('menu-shop');
+    },
+
+    showEditor: function() {
+        Editor.init();
+        UI.show('menu-editor');
+    },
+
+    resetProgress: function() {
+        if(confirm("Are you sure you want to reset all progress? This will delete all levels, coins, and skins!")) {
+            localStorage.removeItem('nd_level');
+            localStorage.removeItem('nd_coins');
+            localStorage.removeItem('nd_equipped_skin');
+            localStorage.removeItem('nd_skins');
+            localStorage.removeItem('nd_tutorial_done');
+            
+            unlocked = 1;
+            totalCoins = 0;
+            equippedSkinIndex = 0;
+            unlockedSkins = [0];
+            tutorialDone = false;
+            
+            document.getElementById('unlock-count').innerText = unlocked;
+            Game.updateCoinDisplay();
+            Player.loadColors();
+            
+            alert("Progress reset! Returning to menu.");
+            UI.home();
+        }
     }
 };
 
@@ -2188,6 +2628,10 @@ window.onmousedown = (e) => {
         Input.mousePressed = true;
         action();
     }
+    // Editor placement
+    if(UI.currentMenu === 'editor' && !isUIElement(e.target)) {
+        Editor.placeBlock(e.clientX, e.clientY);
+    }
 };
 
 window.onmouseup = () => { 
@@ -2202,6 +2646,14 @@ window.ontouchstart = (e) => {
 
 window.ontouchend = () => { 
     Input.mousePressed = false;
+};
+
+// Track current menu for editor
+UI.currentMenu = 'main';
+const originalShow = UI.show;
+UI.show = function(id) {
+    originalShow.call(this, id);
+    UI.currentMenu = id.replace('menu-', '');
 };
 
 Game.init();
