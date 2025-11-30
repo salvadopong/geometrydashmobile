@@ -715,6 +715,14 @@ const THEMES = [
     ['G4', 0, 90]
 ];
 
+// --- INPUT ---
+const Input = { 
+    held: false, 
+    mousePressed: false,
+    mouseX: 0,
+    mouseY: 0
+};
+
 const SKINS = [
     { name: 'Neon Blue', main: '#00ffff', secondary: '#ff0088', cost: 0 },
     { name: 'Matrix Green', main: '#33ff00', secondary: '#ff8800', cost: 50 },
@@ -2435,11 +2443,13 @@ const UI = {
 };
 
 // --- LEVEL EDITOR ---
+// --- LEVEL EDITOR ---
 const LevelEditor = {
     isActive: false,
     currentTool: 1,
     levelData: [],
     isPlacing: false,
+    gridSize: CFG.tile,
 
     init: function() {
         // Initialize editor tools
@@ -2485,6 +2495,31 @@ const LevelEditor = {
         Game.canvas.addEventListener('touchend', () => {
             this.isPlacing = false;
         });
+
+        // Keyboard controls for camera movement in editor
+        window.addEventListener('keydown', (e) => {
+            if (!this.isActive) return;
+            
+            switch(e.code) {
+                case 'ArrowLeft':
+                    Game.camX -= 50;
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    Game.camX += 50;
+                    e.preventDefault();
+                    break;
+                case 'ArrowUp':
+                    Game.camX = 0; // Reset to start
+                    e.preventDefault();
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    this.deleteAtCursor();
+                    e.preventDefault();
+                    break;
+            }
+        });
     },
 
     startNew: function() {
@@ -2494,6 +2529,10 @@ const LevelEditor = {
         UI.hide();
         document.getElementById('editor-tools').style.display = 'flex';
         Game.state = 'editor';
+        Game.camX = 0;
+        
+        // Show editor instructions
+        Game.showTutorialMessage("Click/Touch to place blocks • Arrow keys to move camera • Delete to remove", 5000);
     },
 
     load: function() {
@@ -2505,6 +2544,7 @@ const LevelEditor = {
             UI.hide();
             document.getElementById('editor-tools').style.display = 'flex';
             Game.state = 'editor';
+            Game.camX = 0;
         } else {
             alert('No saved level found! Create a new one.');
         }
@@ -2513,7 +2553,6 @@ const LevelEditor = {
     loadIntoGame: function() {
         Game.level = JSON.parse(JSON.stringify(this.levelData));
         Game.level.push(L(99, 250, 0)); // Add goal
-        Game.camX = 0;
         Player.reset();
     },
 
@@ -2522,18 +2561,39 @@ const LevelEditor = {
         const x = e.clientX - rect.left + Game.camX;
         const y = e.clientY - rect.top;
 
-        const gridX = Math.round(x / CFG.tile);
-        const gridY = Math.round((Game.floorY - y) / CFG.tile);
+        const gridX = Math.round(x / this.gridSize);
+        const gridY = Math.round((Game.floorY - y) / this.gridSize);
+
+        // Boundary checks
+        if (gridX < 0 || gridX > 300 || gridY < -8 || gridY > 8) return;
 
         // Remove existing block at this position
         this.levelData = this.levelData.filter(block => 
             !(block.x === gridX && block.y === gridY)
         );
 
-        // Add new block if not empty space
+        // Add new block if not empty space (tool 0 would be eraser, but we don't have that)
         if (this.currentTool !== 0) {
             this.levelData.push(L(this.currentTool, gridX, gridY));
         }
+
+        this.loadIntoGame();
+    },
+
+    deleteAtCursor: function() {
+        // Get mouse position for deletion
+        const mouseX = Input.mouseX + Game.camX;
+        const mouseY = Input.mouseY;
+        
+        if (mouseX === undefined || mouseY === undefined) return;
+
+        const gridX = Math.round(mouseX / this.gridSize);
+        const gridY = Math.round((Game.floorY - mouseY) / this.gridSize);
+
+        // Remove block at this position
+        this.levelData = this.levelData.filter(block => 
+            !(block.x === gridX && block.y === gridY)
+        );
 
         this.loadIntoGame();
     },
@@ -2752,6 +2812,20 @@ window.onmousedown = (e) => {
     if(!isUIElement(e.target) && Game.state === 'game') {
         Input.mousePressed = true;
         action();
+    }
+};
+
+window.onmousemove = (e) => {
+    const rect = Game.canvas.getBoundingClientRect();
+    Input.mouseX = e.clientX - rect.left;
+    Input.mouseY = e.clientY - rect.top;
+};
+
+window.ontouchmove = (e) => {
+    if (e.touches.length > 0) {
+        const rect = Game.canvas.getBoundingClientRect();
+        Input.mouseX = e.touches[0].clientX - rect.left;
+        Input.mouseY = e.touches[0].clientY - rect.top;
     }
 };
 
