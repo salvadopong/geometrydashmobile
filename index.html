@@ -2466,6 +2466,7 @@ const LevelEditor = {
                 tools.forEach(t => t.classList.remove('selected'));
                 tool.classList.add('selected');
                 this.currentTool = parseInt(tool.dataset.type);
+                LevelEditor.init();
             });
         });
 
