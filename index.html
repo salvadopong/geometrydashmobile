@@ -124,6 +124,19 @@
             animation: text-shimmer 3s ease-in-out infinite alternate;
         }
 
+        h3 {
+            color: transparent;
+            background: linear-gradient(45deg, var(--neon-cyan, var(--neon-magenta), var(--neon-green));
+            -webkit-background-clip: text;
+            background-clip: text;
+            text-shadow: 0  0 30px currentColor;
+            font-size: 3em;
+            margin bottom: 20px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            animation: text-shimmer 4s ease-in-out infinite alternate
+        }
+
         @keyframes text-shimmer {
             0% { filter: hue-rotate(0deg); }
             100% { filter: hue-rotate(360deg); }
@@ -815,6 +828,7 @@
     <div id="menu-main" class="ui-layer visible">
         <div class="menu-box">
             <h1>NEON DASH</h1>
+            <h3>By Gerard</h3>
             <p style="font-size: 1.2em; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green);">Levels unlocked: <span id="unlock-count">1</span>/50</p>
             <p style="font-size: 1.3em; color: var(--neon-yellow); text-shadow: 0 0 10px var(--neon-yellow);">Coins: <span id="menu-coins">0</span> 💰</p>
             <button onclick="UI.startPlay()" class="green">PLAY</button>
